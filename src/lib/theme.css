@@ -1,0 +1,71 @@
+/* Paper & Ember — Dusk (spec §4) */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/fraunces/700.css";
+
+:root {
+  --bg: #2b2622;
+  --panel: #342e29;
+  --panel-2: #403832;
+  --line: #4a4139;
+  --text: #f3ebdf;
+  --muted: #a8998a;
+  --accent: #ef6a3f;
+  --accent-glow: rgba(239, 106, 63, 0.6);
+  --accent-soft: rgba(239, 106, 63, 0.16);
+  --on-accent: #fff6ef;
+  --warn: #f2b640;
+  --warn-soft: rgba(242, 182, 64, 0.12);
+  --ok: #8fc98a;
+  --seg-on: #524840;
+  --radius: 14px;
+  --font: "Inter", system-ui, sans-serif;
+  --font-logo: "Fraunces", Georgia, serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.btn {
+  border: none;
+  font-weight: 700;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 6px 18px -6px var(--accent-glow);
+  white-space: nowrap;
+  transition: filter 0.15s, transform 0.05s;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: default; filter: none; }
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  box-shadow: none;
+  font-weight: 600;
+}
+.btn.ghost:hover { background: var(--panel-2); }
+
+.muted { color: var(--muted); }
