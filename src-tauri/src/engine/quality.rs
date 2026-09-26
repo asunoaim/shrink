@@ -113,28 +113,60 @@ pub fn candidates(src: &Format) -> Vec<Format> {
     out
 }
 
-/// One-click fixes for a tight target: the best clean format (suggested), plus the
-/// next better one as an alternative. Empty when the source format is fine.
+/// Heights to try for full-fps options: 720p and up (gameplay turns to mush below).
+const MIN_FULL_FPS_HEIGHT: u32 = 720;
+
+/// One-click fixes for a tight target, keeping the frame rate as long as possible:
+/// 1. full fps at 720p or higher (the highest clean one),
+/// 2. otherwise a lower fps (60, or 30 for 60 fps sources) at 720p or higher,
+/// 3. otherwise the best clean (or smallest) format of any kind.
+///
+/// The first entry is the suggestion; the second, if any, keeps more of the source.
+/// Empty when the source format is fine.
 pub fn suggestions(target_bytes: u64, duration: f64, has_audio: bool, src: &Format) -> Vec<Suggestion> {
     let vbps = video_bitrate(target_bytes, duration, has_audio);
     if bpp(vbps, src) >= WARN_BPP {
-        return Vec::new();
-    }
-    let cands = candidates(src);
-    if cands.is_empty() {
         return Vec::new();
     }
     let make = |f: Format, suggested: bool| {
         let b = bpp(vbps, &f);
         Suggestion { format: f, bpp: b, clean: b >= CLEAN_BPP, suggested }
     };
-    let i = cands
-        .iter()
-        .position(|f| bpp(vbps, f) >= CLEAN_BPP)
-        .unwrap_or(cands.len() - 1);
-    let mut out = vec![make(cands[i], true)];
+    let clean = |f: &Format| bpp(vbps, f) >= CLEAN_BPP;
+
+    let all = candidates(src);
+    let tall = |fps: f64| -> Vec<Format> {
+        all.iter()
+            .copied()
+            .filter(|f| f.fps == fps && f.height >= MIN_FULL_FPS_HEIGHT.min(src.height))
+            .collect()
+    };
+    let full = tall(src.fps);
+    let lower_fps = all.iter().map(|f| f.fps).filter(|r| *r < src.fps).fold(0.0, f64::max);
+    let reduced = if lower_fps > 0.0 { tall(lower_fps) } else { Vec::new() };
+
+    if let Some(i) = full.iter().position(clean) {
+        let mut out = vec![make(full[i], true)];
+        if i > 0 {
+            out.push(make(full[i - 1], false));
+        }
+        return out;
+    }
+    if let Some(f) = reduced.iter().copied().find(clean) {
+        let mut out = vec![make(f, true)];
+        if let Some(keep_fps) = full.last() {
+            out.push(make(*keep_fps, false));
+        }
+        return out;
+    }
+    // nothing clean at 720p+: best clean of anything, else the smallest
+    if all.is_empty() {
+        return Vec::new();
+    }
+    let i = all.iter().position(clean).unwrap_or(all.len() - 1);
+    let mut out = vec![make(all[i], true)];
     if i > 0 {
-        out.push(make(cands[i - 1], false));
+        out.push(make(all[i - 1], false));
     }
     out
 }
@@ -201,16 +233,31 @@ mod tests {
     }
 
     #[test]
-    fn tight_target_suggests_highest_clean_format_plus_next_better() {
+    fn keeps_full_fps_when_720p_or_higher_is_clean() {
+        // 25 MB for 30 s of 1440p120: 720p120 fits cleanly, so fps stays
+        let s = suggestions(25 * MIB, 30.0, true, &QHD120);
+        assert!(s[0].suggested && s[0].clean, "{s:?}");
+        assert_eq!(s[0].format, Format { width: 1280, height: 720, fps: 120.0 });
+        assert_eq!(s[1].format, Format { width: 1920, height: 1080, fps: 120.0 });
+        assert!(!s[1].clean);
+    }
+
+    #[test]
+    fn drops_to_60_only_when_720p_at_full_fps_is_not_clean() {
+        // 10 MB for 30 s: even 720p120 is blocky, 720p60 is clean
         let s = suggestions(10 * MIB, 30.0, true, &QHD120);
-        assert_eq!(s.len(), 2, "{s:?}");
-        assert!(s[0].suggested && s[0].clean);
+        assert!(s[0].suggested && s[0].clean, "{s:?}");
         assert_eq!(s[0].format, Format { width: 1280, height: 720, fps: 60.0 });
-        assert!(!s[1].suggested && !s[1].clean);
-        // the alternative is the next candidate above the suggestion
-        let c = candidates(&QHD120);
-        let i = c.iter().position(|f| *f == s[0].format).unwrap();
-        assert_eq!(s[1].format, c[i - 1]);
+        // the alternative still keeps full fps
+        assert_eq!(s[1].format, Format { width: 1280, height: 720, fps: 120.0 });
+    }
+
+    #[test]
+    fn sixty_fps_source_drops_to_30_last() {
+        let src = Format { width: 1920, height: 1080, fps: 60.0 };
+        let s = suggestions(8 * MIB, 30.0, true, &src);
+        assert_eq!(s[0].format, Format { width: 1280, height: 720, fps: 30.0 }, "{s:?}");
+        assert_eq!(s[1].format, Format { width: 1280, height: 720, fps: 60.0 });
     }
 
     #[test]
