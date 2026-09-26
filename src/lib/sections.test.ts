@@ -5,6 +5,7 @@ import {
   markIn,
   markOut,
   moveSection,
+  neighbour,
   numbered,
   removeSection,
   resizeSection,
@@ -101,5 +102,27 @@ describe("removeSection / longest", () => {
   it("finds the longest duration", () => {
     expect(longest([s(1, 0, 5), s(2, 6, 16)])).toBe(10);
     expect(longest([])).toBe(0);
+  });
+});
+
+describe("neighbour (Tab / Shift+Tab)", () => {
+  const list = [s(1, 40, 50), s(2, 5, 9), s(3, 20, 25)];
+  it("goes to the next section in time order", () => {
+    expect(neighbour(list, 2, 1)?.id).toBe(3);
+    expect(neighbour(list, 3, 1)?.id).toBe(1);
+  });
+  it("goes back with Shift+Tab", () => {
+    expect(neighbour(list, 1, -1)?.id).toBe(3);
+  });
+  it("wraps around at the ends", () => {
+    expect(neighbour(list, 1, 1)?.id).toBe(2);
+    expect(neighbour(list, 2, -1)?.id).toBe(1);
+  });
+  it("starts at the first or last when nothing is selected", () => {
+    expect(neighbour(list, null, 1)?.id).toBe(2);
+    expect(neighbour(list, null, -1)?.id).toBe(1);
+  });
+  it("is null without sections", () => {
+    expect(neighbour([], null, 1)).toBeNull();
   });
 });

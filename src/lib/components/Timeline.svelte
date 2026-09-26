@@ -8,7 +8,7 @@
     type Edge,
     type Section,
   } from "$lib/sections";
-  import { actualStart } from "$lib/slider";
+  import { actualStart, wheelSeconds } from "$lib/slider";
 
   let {
     duration,
@@ -40,6 +40,8 @@
 
   let track: HTMLDivElement | undefined = $state();
   let drag: Drag | null = $state(null);
+  /** Time under the mouse, for the hover preview line. */
+  let hover: number | null = $state(null);
 
   const pct = (t: number) => `${(t / duration) * 100}%`;
   const ticks = $derived(tickTimes(duration));
@@ -85,9 +87,17 @@
     begin(e, { kind: "resize", id: s.id, edge });
   }
 
+  function onWheel(e: WheelEvent) {
+    const step = wheelSeconds(e.deltaY, e.shiftKey);
+    if (step === 0) return;
+    e.preventDefault();
+    onseek(currentTime + step);
+  }
+
   function onMove(e: PointerEvent) {
-    if (!drag) return;
     const t = timeAt(e);
+    hover = drag?.kind === "scrub" ? null : t;
+    if (!drag) return;
     switch (drag.kind) {
       case "scrub":
         onseek(t);
@@ -97,7 +107,8 @@
         drag.moved ||= Math.abs(e.clientX - drag.x0) > 4;
         break;
       case "move":
-        drag.moved ||= Math.abs(e.clientX - drag.x0) > 3;
+        // a sloppy click shouldn't shift the section
+        drag.moved ||= Math.abs(e.clientX - drag.x0) > 6;
         if (drag.moved) sections = moveSection(drag.base, drag.id, t - drag.t0, duration);
         break;
       case "resize":
@@ -119,14 +130,26 @@
         onseek(timeAt(e));
       }
     } else if (drag.kind === "move" && !drag.moved) {
-      onseek(timeAt(e));
+      // a click on a section puts the playhead at its start, so Space plays it
+      const id = drag.id;
+      const s = sections.find((x) => x.id === id);
+      if (s) onseek(s.start);
     }
     drag = null;
   }
 </script>
 
-<div class="timeline" role="presentation" onpointermove={onMove} onpointerup={onUp} onpointercancel={onUp}>
-  <div class="ruler" role="presentation" onpointerdown={onScrubDown}>
+<div
+  class="timeline"
+  class:scrubbing={drag?.kind === "scrub"}
+  role="presentation"
+  onpointermove={onMove}
+  onpointerup={onUp}
+  onpointercancel={onUp}
+  onpointerleave={() => (hover = null)}
+  onwheel={onWheel}
+>
+  <div class="ruler" role="presentation" onpointerdown={onScrubDown} title="Drag to scrub · mouse wheel skips 1 s (Shift: 5 s)">
     {#each ticks as t}
       <span class="tick" style:left={pct(t)}>{fmtTime(t).replace(/\.\d$/, "")}</span>
     {/each}
@@ -165,22 +188,36 @@
     {/if}
   </div>
 
-  <div class="playhead" style:left={pct(currentTime)}></div>
+  {#if hover !== null && !drag}
+    <div class="ghost" style:left={pct(hover)}><span>{fmtTime(hover)}</span></div>
+  {/if}
+
+  <div class="playhead" style:left={pct(currentTime)}>
+    <span class="grab" role="slider" tabindex="-1" aria-label="Playhead" aria-valuenow={currentTime} onpointerdown={onScrubDown}></span>
+  </div>
 </div>
 
 <style>
   .timeline {
     position: relative;
-    margin: 0 2px;
+    margin: 10px 2px 0;
   }
   .ruler {
     position: relative;
-    height: 20px;
-    cursor: ew-resize;
+    height: 26px;
+    cursor: grab;
+    border-radius: 6px;
+  }
+  .ruler:hover {
+    background: rgba(243, 235, 223, 0.04);
+  }
+  .scrubbing,
+  .scrubbing * {
+    cursor: grabbing !important;
   }
   .tick {
     position: absolute;
-    top: 3px;
+    top: 6px;
     transform: translateX(-50%);
     font-size: 10.5px;
     color: var(--muted);
@@ -277,21 +314,61 @@
   }
   .playhead {
     position: absolute;
-    top: 16px;
+    top: 4px;
     bottom: -2px;
     width: 2px;
     margin-left: -1px;
     background: var(--text);
     pointer-events: none;
+    z-index: 3;
   }
-  .playhead::before {
+  /* big, forgiving grab zone: the knob plus a wide strip down the whole timeline */
+  .grab {
+    position: absolute;
+    top: -4px;
+    bottom: 0;
+    left: -12px;
+    width: 26px;
+    pointer-events: auto;
+    cursor: grab;
+  }
+  .grab::before {
     content: "";
     position: absolute;
-    top: -2px;
-    left: -4px;
-    width: 10px;
-    height: 10px;
+    top: 0;
+    left: 4px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--text);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s;
+  }
+  .grab:hover::before,
+  .scrubbing .grab::before {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(243, 235, 223, 0.2), 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .ghost {
+    position: absolute;
+    top: 4px;
+    bottom: 0;
+    width: 1px;
+    background: rgba(243, 235, 223, 0.35);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .ghost span {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
   }
 </style>

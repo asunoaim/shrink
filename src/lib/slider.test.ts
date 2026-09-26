@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actualStart, posToValue, valueToPos } from "./slider";
+import { actualStart, posToValue, valueToPos, wheelSeconds } from "./slider";
 
 describe("log slider", () => {
   it("maps the ends to min and max", () => {
@@ -31,5 +31,18 @@ describe("actualStart", () => {
     expect(actualStart(k, 2.6)).toBe(2);
     expect(actualStart(k, 3)).toBe(3);
     expect(actualStart([], 3)).toBe(0);
+  });
+});
+
+describe("wheelSeconds", () => {
+  it("skips a second per notch, forward when scrolling down", () => {
+    expect(wheelSeconds(100, false)).toBe(1);
+    expect(wheelSeconds(-100, false)).toBe(-1);
+  });
+  it("skips five seconds with Shift", () => {
+    expect(wheelSeconds(100, true)).toBe(5);
+  });
+  it("ignores zero movement", () => {
+    expect(wheelSeconds(0, false)).toBe(0);
   });
 });
