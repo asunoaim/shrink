@@ -67,3 +67,12 @@ export function markOut(st: MarkState, t: number, duration: number): MarkState {
   // the new section stays unselected, so the next I/O pair starts another one
   return { sections: addSection(st.sections, from, t, duration), pendingIn: null, selected: null };
 }
+
+/** Tab / Shift+Tab: the next (+1) or previous (-1) section in time order, wrapping around. */
+export function neighbour(list: Section[], selected: number | null, dir: 1 | -1): Section | null {
+  const ordered = numbered(list);
+  if (ordered.length === 0) return null;
+  const i = ordered.findIndex((s) => s.id === selected);
+  if (i === -1) return dir === 1 ? ordered[0] : ordered[ordered.length - 1];
+  return ordered[(i + dir + ordered.length) % ordered.length];
+}

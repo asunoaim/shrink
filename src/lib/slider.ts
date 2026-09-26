@@ -22,3 +22,9 @@ export function actualStart(keyframes: number[], start: number): number {
   }
   return best;
 }
+
+/** Seconds to skip for one mouse-wheel notch over the timeline (down = forward). */
+export function wheelSeconds(deltaY: number, shift: boolean): number {
+  if (deltaY === 0) return 0;
+  return Math.sign(deltaY) * (shift ? 5 : 1);
+}

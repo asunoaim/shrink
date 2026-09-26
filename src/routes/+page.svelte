@@ -23,7 +23,7 @@
   } from "$lib/api";
   import { bytesToMb, fmtMb, mbToBytes } from "$lib/format";
   import { clampTarget, doneOutputs, mergeRetry } from "$lib/exporting";
-  import { longest, markIn, markOut, numbered, removeSection, type Section } from "$lib/sections";
+  import { longest, markIn, markOut, neighbour, numbered, removeSection, type Section } from "$lib/sections";
   import Player from "$lib/components/Player.svelte";
   import Timeline from "$lib/components/Timeline.svelte";
   import ExportBar, { type Phase, type Progress } from "$lib/components/ExportBar.svelte";
@@ -47,12 +47,13 @@
   let selected: number | null = $state(null);
   let pendingIn: number | null = $state(null);
 
-  // export settings (size and mode remembered between sessions)
-  let mode: "original" | "shrink" = $state(load("mode", "original"));
+  // export settings: every clip starts in Original; the size is remembered
+  let mode: "original" | "shrink" = $state("original");
   let targetMb = $state(load("targetMb", 25));
   let chosenFormat: Format | null = $state(null);
   let selectedTracks: number[] = $state([]);
   let advice: SizeAdvice | null = $state(null);
+  let adviceTicket = 0;
 
   // export run
   let phase: Phase = $state("idle");
@@ -84,7 +85,6 @@
     }
   }
 
-  $effect(() => save("mode", mode));
   $effect(() => save("targetMb", targetMb));
 
   // size advice follows the longest section, the target and the audio choice
@@ -96,9 +96,11 @@
       advice = null;
       return;
     }
+    // while dragging the slider, only the newest answer counts
+    const ticket = ++adviceTicket;
     sizeAdvice(len, bytes, hasAudio)
-      .then((a) => (advice = a))
-      .catch(() => (advice = null));
+      .then((a) => ticket === adviceTicket && (advice = a))
+      .catch(() => ticket === adviceTicket && (advice = null));
   });
 
   // a remembered or earlier target can be bigger than these sections can use
@@ -120,6 +122,7 @@
       selected = null;
       pendingIn = null;
       chosenFormat = null;
+      mode = "original";
       currentTime = 0;
       phase = "idle";
       selectedTracks = v.info.audioTracks.length > 0 ? [0] : [];
@@ -203,9 +206,20 @@
 
   function onKey(e: KeyboardEvent) {
     const target = e.target as HTMLElement;
-    if (!info || target.tagName === "INPUT" || phase === "exporting") return;
+    if (!info || target.tagName === "INPUT") return;
     const frame = 1 / (info.fps || 60);
+    // while exporting, the preview stays usable but the sections are locked
+    if (phase === "exporting" && !["Tab", " ", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
     switch (e.key) {
+      case "Tab": {
+        e.preventDefault();
+        const next = neighbour(sections, selected, e.shiftKey ? -1 : 1);
+        if (next) {
+          selected = next.id;
+          player?.seek(next.start);
+        }
+        break;
+      }
       case " ":
         e.preventDefault();
         player?.toggle();
@@ -316,7 +330,7 @@
         bind:selected
       />
       <div class="hint muted">
-        Drag on the timeline to mark a highlight, or press <kbd>I</kbd> and <kbd>O</kbd>. <kbd>Space</kbd> plays, <kbd>←</kbd><kbd>→</kbd> step a frame, <kbd>Shift</kbd> for a second, <kbd>Del</kbd> removes.
+        Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · click it or press <kbd>Tab</kbd> to jump there · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
       </div>
     </main>
     <ExportBar
