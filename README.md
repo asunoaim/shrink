@@ -9,7 +9,9 @@ A small Windows app for gameplay clips. Mark your highlights, then either
 
 It uses your graphics card to encode (NVIDIA, AMD or Intel) and falls back to the CPU.
 
-![shrink with two highlights marked and a 4 MB target](docs/screenshot.png)
+![shrink with three highlights marked in Shrink mode, warning that the target is tight](docs/screenshot.png)
+
+<sub>Screenshot footage: [Xonotic 0.8.2 gameplay](https://commons.wikimedia.org/wiki/File:Xonotic_0-8-2_gameplay.webm) by Drummyfish and the Xonotic developers, GPLv3.</sub>
 
 ## Download
 
