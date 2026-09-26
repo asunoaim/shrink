@@ -397,9 +397,9 @@
     align-items: center;
     gap: 8px;
     font-family: var(--font-logo);
-    font-weight: 700;
-    font-size: 20px;
-    letter-spacing: -0.01em;
+    font-weight: 800;
+    font-size: 19px;
+    letter-spacing: -0.02em;
   }
   .mark {
     width: 14px;

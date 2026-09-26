@@ -1,9 +1,9 @@
-/* Paper & Ember — Dusk (spec §4) */
+/* Paper & Ember — Dusk (spec §4); wordmark in Sora since 0.2.1 */
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
 @import "@fontsource/inter/700.css";
-@import "@fontsource/fraunces/700.css";
+@import "@fontsource/sora/800.css";
 
 :root {
   --bg: #2b2622;
@@ -22,7 +22,7 @@
   --seg-on: #524840;
   --radius: 14px;
   --font: "Inter", system-ui, sans-serif;
-  --font-logo: "Fraunces", Georgia, serif;
+  --font-logo: "Sora", var(--font);
   color-scheme: dark;
 }
 
