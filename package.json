@@ -1,6 +1,6 @@
 {
   "name": "shrink",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Trim gameplay clips losslessly or shrink them to a target size",
   "type": "module",
   "scripts": {
@@ -15,8 +15,8 @@
   },
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "@fontsource/fraunces": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
+    "@fontsource/sora": "^5.3.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-opener": "^2",
