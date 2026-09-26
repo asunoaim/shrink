@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "shrink",
+  "version": "0.1.0",
+  "identifier": "io.github.asunoaim.shrink",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "shrink",
+        "width": 1180,
+        "height": 820,
+        "minWidth": 820,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "ffmpeg/ffmpeg.exe": "ffmpeg/ffmpeg.exe",
+      "ffmpeg/ffprobe.exe": "ffmpeg/ffprobe.exe",
+      "ffmpeg/LICENSE-ffmpeg.txt": "ffmpeg/LICENSE-ffmpeg.txt",
+      "ffmpeg/README-ffmpeg.txt": "ffmpeg/README-ffmpeg.txt",
+      "../LICENSE": "LICENSE.txt"
+    },
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh",
+        "installMode": "currentUser"
+      }
+    },
+    "shortDescription": "Trim gameplay clips losslessly or shrink them to a target size",
+    "license": "GPL-3.0-or-later",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgyREYwQjM5NURFN0JFMQpSV1RoZTk2VnMvQXRDRExnbmgwY2IrYy9HS0M2czJMc3R4cjJKcjlrVmtzRFlXaFNMdTk5eXg1UAo=",
+      "endpoints": [
+        "https://github.com/asunoaim/shrink/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
