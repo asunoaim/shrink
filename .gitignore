@@ -14,3 +14,6 @@ vite.config.ts.timestamp-*
 
 # bundled ffmpeg (scripts/fetch-ffmpeg.ps1)
 src-tauri/ffmpeg/
+
+# design audits (local)
+DESIGN-IS-*/
