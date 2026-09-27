@@ -3,7 +3,7 @@
 export type KeyContext = {
   /** focus is in a text, number or range input */
   typing: boolean;
-  /** a button has focus and got it from the keyboard (:focus-visible) */
+  /** a button has focus and got it from the keyboard (Tab since the last pointer press) */
   buttonFocusedByKeyboard: boolean;
   exporting: boolean;
   shift: boolean;
