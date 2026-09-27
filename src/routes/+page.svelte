@@ -179,10 +179,10 @@
         mode: mode === "original" ? { kind: "original" } : { kind: "shrink", targetBytes: mbToBytes(targetMb), format: chosenFormat },
         audioTracks: selectedTracks,
         outDir: dir,
-      });
+      }, true);
     } catch (e) {
       phase = "done";
-      const err: ClipOutcome = { kind: "failed", error: String(e) };
+      const err: ClipOutcome = { kind: "failed", error: String(e), detail: "" };
       outcomes = retrying ? mergeRetry(outcomes, runNumbers, runNumbers.map(() => err)) : ordered.map(() => err);
       copiedToClipboard = false;
     }
