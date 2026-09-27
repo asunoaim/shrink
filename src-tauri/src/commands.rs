@@ -92,6 +92,32 @@ impl AppState {
         }
     }
 
+    /// Claims the one export slot and arms a fresh cancel flag *before* `plan`
+    /// runs, so Cancel works while keyframes are still being read. A cancel
+    /// during planning, or a planning error, frees the slot again.
+    fn begin_export<T>(&self, plan: impl FnOnce() -> Result<T>) -> Result<(T, CancelFlag)> {
+        use std::sync::atomic::Ordering;
+        if self.exporting.swap(true, Ordering::SeqCst) {
+            return Err(EngineError::InvalidRequest("an export is already running".into()));
+        }
+        let cancel = CancelFlag::new();
+        *self.cancel.lock().unwrap() = Some(cancel.clone());
+        let planned = plan().and_then(|v| if cancel.is_cancelled() { Err(EngineError::Cancelled) } else { Ok(v) });
+        match planned {
+            Ok(v) => Ok((v, cancel)),
+            Err(e) => {
+                self.exporting.store(false, Ordering::SeqCst);
+                Err(e)
+            }
+        }
+    }
+
+    fn cancel_export(&self) {
+        if let Some(c) = self.cancel.lock().unwrap().as_ref() {
+            c.cancel();
+        }
+    }
+
     /// Scans once per clip; later calls return the stored list.
     fn ensure_keyframes(&self, tools: &Tools, path: &Path) -> Result<Vec<f64>> {
         if let Some(k) = self.ready_keyframes(path)? {
@@ -169,11 +195,7 @@ pub async fn start_export(
     request: ExportRequest,
     copy_to_clipboard: bool,
 ) -> Result<Vec<ExportJob>> {
-    use std::sync::atomic::Ordering;
-    if state.exporting.swap(true, Ordering::SeqCst) {
-        return Err(EngineError::InvalidRequest("an export is already running".into()));
-    }
-    let planned = (|| -> Result<(Vec<ExportJob>, Tools)> {
+    let ((jobs, tools), cancel) = state.begin_export(|| {
         let tools = state.tools()?;
         let mut info = state.clip()?;
         if matches!(request.mode, plan::Mode::Original) {
@@ -181,17 +203,8 @@ pub async fn start_export(
             info.keyframes = state.ensure_keyframes(&tools, &info.path)?;
         }
         Ok((plan::plan(&info, &request, state.encoder(&tools), &|p| p.exists())?, tools))
-    })();
-    let (jobs, tools) = match planned {
-        Ok(v) => v,
-        Err(e) => {
-            state.exporting.store(false, Ordering::SeqCst);
-            return Err(e);
-        }
-    };
+    })?;
     let exporting = state.exporting.clone();
-    let cancel = CancelFlag::new();
-    *state.cancel.lock().unwrap() = Some(cancel.clone());
 
     let thread_jobs = jobs.clone();
     std::thread::spawn(move || {
@@ -223,9 +236,7 @@ pub fn warm_up(app: &AppHandle) {
 
 #[tauri::command]
 pub fn cancel_export(state: State<'_, AppState>) {
-    if let Some(c) = state.cancel.lock().unwrap().as_ref() {
-        c.cancel();
-    }
+    state.cancel_export();
 }
 
 /// A playable copy for clips the built-in player can't decode. Progress arrives
@@ -341,5 +352,33 @@ mod tests {
 
         state.set_clip(info("C:/b.mp4"));
         assert_eq!(state.ready_keyframes(Path::new("C:/b.mp4")).unwrap(), None);
+    }
+
+    #[test]
+    fn cancel_while_preparing_stops_the_export_and_frees_the_slot() {
+        let state = AppState::default();
+        // Cancel arrives while keyframes are still being read
+        let r = state.begin_export(|| {
+            state.cancel_export();
+            Ok(())
+        });
+        assert!(matches!(r, Err(EngineError::Cancelled)));
+        assert!(!state.exporting.load(std::sync::atomic::Ordering::SeqCst));
+        // the next export starts with a fresh flag
+        let (_, cancel) = state.begin_export(|| Ok(())).unwrap();
+        assert!(!cancel.is_cancelled());
+        state.cancel_export();
+        assert!(cancel.is_cancelled(), "Cancel reaches the running export's flag");
+    }
+
+    #[test]
+    fn only_one_export_at_a_time_and_a_planning_error_frees_the_slot() {
+        let state = AppState::default();
+        let _running = state.begin_export(|| Ok(())).unwrap();
+        assert!(matches!(state.begin_export(|| Ok(())), Err(EngineError::InvalidRequest(_))));
+        state.exporting.store(false, std::sync::atomic::Ordering::SeqCst);
+        let r: Result<((), CancelFlag)> = state.begin_export(|| Err(EngineError::InvalidRequest("no clip is open".into())));
+        assert!(r.is_err());
+        assert!(!state.exporting.load(std::sync::atomic::Ordering::SeqCst));
     }
 }
