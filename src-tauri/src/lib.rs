@@ -1,6 +1,7 @@
 pub mod clipboard;
 pub mod commands;
 pub mod engine;
+pub mod settings;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,6 +19,9 @@ pub fn run() {
             commands::make_proxy,
             commands::initial_file,
             commands::copy_to_clipboard,
+            commands::get_settings,
+            commands::set_settings,
+            commands::folder_exists,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
