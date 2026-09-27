@@ -4,7 +4,7 @@
   import { posToValue, valueToPos } from "$lib/slider";
 
   export type Phase = "idle" | "exporting" | "done";
-  export type Progress = { clip: number; count: number; fraction: number; eta: number | null };
+  export type Progress = { clip: number; count: number; fraction: number; eta: number | null; preparing: boolean };
 
   let {
     mode = $bindable("original"),
@@ -174,7 +174,13 @@
     {@const overall = (progress.clip - 1 + progress.fraction) / progress.count}
     <div class="prog">
       <div class="prog-top">
-        <span>Clip <b>{progress.clip} of {progress.count}</b> · {mode === "shrink" ? `shrinking to ${showMb(targetMb)} MB` : "copying losslessly"}</span>
+        <span>
+          {#if progress.preparing}
+            Preparing…
+          {:else}
+            Clip <b>{progress.clip} of {progress.count}</b> · {mode === "shrink" ? `shrinking to ${showMb(targetMb)} MB` : "copying losslessly"}
+          {/if}
+        </span>
         <span><b>{Math.round(overall * 100)}%</b>{progress.eta !== null ? ` · ~${Math.ceil(progress.eta)} s left` : ""}</span>
       </div>
       <div class="bar"><i style:width={`${overall * 100}%`}></i></div>
