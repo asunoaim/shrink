@@ -381,7 +381,7 @@
 
 <style>
   .app {
-    height: 100vh;
+    height: 100vh; /* geometry */
     display: flex;
     flex-direction: column;
     position: relative;
@@ -389,29 +389,28 @@
   header {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 12px 16px 10px;
+    gap: var(--s4);
+    padding: var(--s3) var(--s4) var(--s3);
   }
   .logo {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--s2);
     font-family: var(--font-logo);
-    font-weight: 800;
-    font-size: 19px;
+    font-weight: 800; /* Sora wordmark */
+    font-size: var(--t-xl);
     letter-spacing: -0.02em;
   }
   .mark {
-    width: 14px;
-    height: 14px;
+    width: 14px; /* geometry */
+    height: 14px; /* geometry */
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 14px var(--accent-glow);
   }
   .file {
     flex: 1;
-    min-width: 0;
-    font-size: 12.5px;
+    min-width: 0; /* geometry */
+    font-size: var(--t-sm);
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
@@ -419,46 +418,42 @@
   }
   .file b {
     color: var(--text);
-    font-weight: 500;
-    margin-right: 10px;
-  }
-  .small {
-    padding: 6px 14px;
-    font-size: 12px;
+    font-weight: var(--w-medium);
+    margin-right: var(--s3);
   }
   main {
     flex: 1;
-    min-height: 0;
+    min-height: 0; /* geometry */
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 0 16px;
+    gap: var(--s3);
+    padding: 0 var(--s4);
   }
   .hint {
-    font-size: 11px;
+    font-size: var(--t-xs);
     text-align: center;
-    margin-top: 12px;
+    margin-top: var(--s3);
   }
   kbd {
     font-family: var(--font);
-    font-size: 10px;
-    padding: 1px 5px;
-    border-radius: 4px;
+    font-size: var(--t-xs);
+    padding: var(--s1) var(--s1);
+    border-radius: var(--r-sm);
     border: 1px solid var(--line);
     background: var(--panel);
     color: var(--text);
-    margin: 0 1px;
+    margin: 0 var(--s1);
   }
   .drop {
     flex: 1;
-    margin: 4px 16px 16px;
+    margin: var(--s1) var(--s4) var(--s4);
     border: 2px dashed var(--line);
-    border-radius: 16px;
+    border-radius: var(--r-md);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: var(--s3);
     text-align: center;
     transition: border-color 0.15s, background 0.15s;
   }
@@ -468,37 +463,36 @@
   }
   .big {
     font-family: var(--font-logo);
-    font-size: 30px;
-    font-weight: 700;
+    font-size: var(--t-2xl);
+    font-weight: 800; /* Sora wordmark */
   }
   .error {
     color: var(--warn);
-    max-width: 520px;
-    font-size: 12px;
+    max-width: 520px; /* geometry */
+    font-size: var(--t-sm);
   }
   .overlay {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    background: rgba(20, 16, 13, 0.7);
-    backdrop-filter: blur(3px);
+    background: var(--scrim);
     font-family: var(--font-logo);
-    font-size: 26px;
-    font-weight: 700;
+    font-size: var(--t-2xl);
+    font-weight: 800; /* Sora wordmark */
     z-index: 10;
   }
   .toast {
     position: absolute;
-    top: 56px;
+    top: 56px; /* geometry */
     left: 50%;
     transform: translateX(-50%);
     background: var(--panel);
     border: 1px solid var(--warn);
     color: var(--text);
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-size: 12px;
+    padding: var(--s2) var(--s3);
+    border-radius: var(--r-md);
+    font-size: var(--t-sm);
     z-index: 11;
     max-width: 80%;
   }
@@ -506,6 +500,6 @@
     border: none;
     background: transparent;
     color: var(--muted);
-    margin-left: 8px;
+    margin-left: var(--s2);
   }
 </style>

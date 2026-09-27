@@ -200,16 +200,16 @@
 <style>
   .timeline {
     position: relative;
-    margin: 10px 2px 0;
+    margin: var(--s3) var(--s1) 0;
   }
   .ruler {
     position: relative;
-    height: 26px;
+    height: 26px; /* geometry */
     cursor: grab;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
   }
   .ruler:hover {
-    background: rgba(243, 235, 223, 0.04);
+    background: var(--tint);
   }
   .scrubbing,
   .scrubbing * {
@@ -217,9 +217,9 @@
   }
   .tick {
     position: absolute;
-    top: 6px;
+    top: 6px; /* geometry */
     transform: translateX(-50%);
-    font-size: 10.5px;
+    font-size: var(--t-xs);
     color: var(--muted);
     font-variant-numeric: tabular-nums;
     pointer-events: none;
@@ -229,30 +229,30 @@
   }
   .track {
     position: relative;
-    height: 58px;
+    height: 58px; /* geometry */
     cursor: crosshair;
   }
   .strip {
     position: absolute;
-    inset: 6px 0;
-    border-radius: 8px;
+    inset: 6px 0; /* geometry */
+    border-radius: var(--r-md);
     background-color: var(--panel-2);
     background-size: 100% 100%;
     opacity: 0.8;
   }
   .section {
     position: absolute;
-    top: 2px;
-    bottom: 2px;
-    border-radius: 8px;
+    top: 2px; /* geometry */
+    bottom: 2px; /* geometry */
+    border-radius: var(--r-md);
     border: 2px solid var(--accent);
     background: var(--accent-soft);
     cursor: grab;
-    min-width: 6px;
+    min-width: 6px; /* geometry */
   }
   .section.selected {
-    background: rgba(239, 106, 63, 0.3);
-    box-shadow: 0 0 0 3px rgba(239, 106, 63, 0.25), 0 0 16px var(--accent-glow);
+    background: var(--accent-strong);
+    box-shadow: 0 0 0 3px var(--accent-soft); /* geometry */
   }
   .section.drawing {
     border-style: dashed;
@@ -260,46 +260,46 @@
   }
   .badge {
     position: absolute;
-    top: -10px;
-    left: 6px;
+    top: -10px; /* geometry */
+    left: 6px; /* geometry */
     font-style: normal;
-    font-size: 10px;
-    font-weight: 700;
+    font-size: var(--t-xs);
+    font-weight: var(--w-bold);
     background: var(--accent);
     color: var(--on-accent);
-    padding: 1px 7px;
-    border-radius: 999px;
+    padding: var(--s1) var(--s2);
+    border-radius: var(--r-pill);
     pointer-events: none;
   }
   .edge {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 10px;
+    width: 10px; /* geometry */
     cursor: ew-resize;
   }
   .edge.start {
-    left: -6px;
+    left: -6px; /* geometry */
   }
   .edge.end {
-    right: -6px;
+    right: -6px; /* geometry */
   }
   .lead {
     position: absolute;
-    top: 10px;
-    bottom: 10px;
+    top: 10px; /* geometry */
+    bottom: 10px; /* geometry */
     border-top: 2px dashed var(--accent);
     border-bottom: 2px dashed var(--accent);
     border-left: 2px dashed var(--accent);
-    border-radius: 6px 0 0 6px;
+    border-radius: var(--r-sm) 0 0 var(--r-sm);
     opacity: 0.75;
     pointer-events: none;
   }
   .lead-label {
     position: absolute;
-    bottom: -24px;
+    bottom: -24px; /* geometry */
     left: 0;
-    font-size: 10px;
+    font-size: var(--t-xs);
     color: var(--muted);
     white-space: nowrap;
   }
@@ -307,17 +307,16 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 2px;
+    width: 2px; /* geometry */
     background: var(--accent);
-    box-shadow: 0 0 10px var(--accent-glow);
     pointer-events: none;
   }
   .playhead {
     position: absolute;
-    top: 4px;
-    bottom: -2px;
-    width: 2px;
-    margin-left: -1px;
+    top: 4px; /* geometry */
+    bottom: -2px; /* geometry */
+    width: 2px; /* geometry */
+    margin-left: -1px; /* geometry */
     background: var(--text);
     pointer-events: none;
     z-index: 3;
@@ -325,10 +324,10 @@
   /* big, forgiving grab zone: the knob plus a wide strip down the whole timeline */
   .grab {
     position: absolute;
-    top: -4px;
+    top: -4px; /* geometry */
     bottom: 0;
-    left: -12px;
-    width: 26px;
+    left: -12px; /* geometry */
+    width: 26px; /* geometry */
     pointer-events: auto;
     cursor: grab;
   }
@@ -336,39 +335,39 @@
     content: "";
     position: absolute;
     top: 0;
-    left: 4px;
-    width: 18px;
-    height: 18px;
+    left: 4px; /* geometry */
+    width: 18px; /* geometry */
+    height: 18px; /* geometry */
     border-radius: 50%;
     background: var(--text);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow);
     transition: transform 0.1s;
   }
   .grab:hover::before,
   .scrubbing .grab::before {
     transform: scale(1.15);
-    box-shadow: 0 0 0 4px rgba(243, 235, 223, 0.2), 0 2px 8px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 4px var(--knob-halo), var(--shadow); /* geometry */
   }
   .ghost {
     position: absolute;
-    top: 4px;
+    top: 4px; /* geometry */
     bottom: 0;
-    width: 1px;
-    background: rgba(243, 235, 223, 0.35);
+    width: 1px; /* geometry */
+    background: var(--ghost-line);
     pointer-events: none;
     z-index: 2;
   }
   .ghost span {
     position: absolute;
-    top: -20px;
+    top: -20px; /* geometry */
     left: 50%;
     transform: translateX(-50%);
-    font-size: 10.5px;
+    font-size: var(--t-xs);
     font-variant-numeric: tabular-nums;
     background: var(--panel-2);
     border: 1px solid var(--line);
-    padding: 1px 6px;
-    border-radius: 5px;
+    padding: var(--s1) var(--s2);
+    border-radius: var(--r-sm);
     white-space: nowrap;
   }
 </style>

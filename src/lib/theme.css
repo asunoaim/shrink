@@ -1,28 +1,64 @@
-/* Paper & Ember — Dusk (spec §4); wordmark in Sora since 0.2.1 */
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
-@import "@fontsource/sora/800.css";
+/* Paper & Ember — Dusk. The only place for colors, spacing, type, radius and effects. */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/sora/latin-800.css";
 
 :root {
+  /* color */
   --bg: #2b2622;
   --panel: #342e29;
   --panel-2: #403832;
   --line: #4a4139;
   --text: #f3ebdf;
   --muted: #a8998a;
+  --muted-hi: #bcae9f; /* labels on --panel-2: 5.3:1 */
   --accent: #ef6a3f;
-  --accent-glow: rgba(239, 106, 63, 0.6);
   --accent-soft: rgba(239, 106, 63, 0.16);
-  --on-accent: #fff6ef;
+  --accent-strong: rgba(239, 106, 63, 0.3);
+  --on-accent: #2b2622; /* 4.8:1 on --accent */
   --warn: #f2b640;
   --warn-soft: rgba(242, 182, 64, 0.12);
+  --warn-zone: rgba(242, 182, 64, 0.32);
+  --warn-ring: rgba(242, 182, 64, 0.45);
+  --on-warn: #2b2622;
   --ok: #8fc98a;
-  --seg-on: #524840;
-  --radius: 14px;
+  --stage: #141110; /* behind the video */
+  --scrim: rgba(20, 16, 13, 0.7);
+  --hud-bg: rgba(0, 0, 0, 0.5);
+  --hud-bg-hover: rgba(0, 0, 0, 0.7);
+  --hud-text: #ffffff;
+  --tint: rgba(243, 235, 223, 0.04);
+  --ghost-line: rgba(243, 235, 223, 0.35);
+  --knob-halo: rgba(243, 235, 223, 0.2);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+
+  /* spacing */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+
+  /* type */
+  --t-xs: 11px;
+  --t-sm: 12px;
+  --t-md: 13px;
+  --t-lg: 15px;
+  --t-xl: 20px;
+  --t-2xl: 28px;
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-bold: 600;
   --font: "Inter", system-ui, sans-serif;
   --font-logo: "Sora", var(--font);
+
+  /* shape */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-pill: 999px;
+
   color-scheme: dark;
 }
 
@@ -34,7 +70,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 13px;
+  font-size: var(--t-md);
   -webkit-font-smoothing: antialiased;
   user-select: none;
   overflow: hidden;
@@ -46,14 +82,19 @@ button {
   cursor: pointer;
 }
 
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .btn {
   border: none;
-  font-weight: 700;
-  padding: 9px 18px;
-  border-radius: 999px;
+  font-weight: var(--w-bold);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 6px 18px -6px var(--accent-glow);
   white-space: nowrap;
   transition: filter 0.15s, transform 0.05s;
 }
@@ -63,9 +104,17 @@ button {
 .btn.ghost {
   background: transparent;
   border: 1px solid var(--line);
-  box-shadow: none;
-  font-weight: 600;
+  color: var(--text);
+  font-weight: var(--w-medium);
 }
 .btn.ghost:hover { background: var(--panel-2); }
+.btn.small { padding: var(--s1) var(--s3); font-size: var(--t-sm); }
 
 .muted { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

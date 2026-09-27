@@ -205,17 +205,17 @@
 
 <style>
   .dock {
-    margin: 12px 14px 14px;
-    padding: 12px 14px;
-    border-radius: 12px;
+    margin: var(--s3) var(--s4) var(--s4);
+    padding: var(--s3) var(--s4);
+    border-radius: var(--r-md);
     background: var(--panel);
     border: 1px solid var(--line);
   }
   .row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    min-height: 36px;
+    gap: var(--s4);
+    min-height: 36px; /* geometry */
   }
   .grow {
     flex: 1;
@@ -223,45 +223,44 @@
   .seg {
     display: flex;
     background: var(--panel-2);
-    border-radius: 999px;
-    padding: 3px;
+    border-radius: var(--r-pill);
+    padding: var(--s1);
   }
   .seg button {
     border: none;
     background: transparent;
-    padding: 6px 14px;
-    border-radius: 999px;
-    color: var(--muted);
+    padding: var(--s2) var(--s4);
+    border-radius: var(--r-pill);
+    color: var(--muted-hi);
   }
   .seg button.on {
-    background: var(--seg-on);
+    background: var(--bg);
     color: var(--text);
-    font-weight: 600;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    font-weight: var(--w-bold);
   }
   .size {
     flex: 1;
-    min-width: 200px;
+    min-width: 200px; /* geometry */
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--s3);
   }
   .size.note {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--t-sm);
   }
   .slider {
     position: relative;
     flex: 1;
-    height: 22px;
+    height: 22px; /* geometry */
   }
   .slider .zone,
   .slider .fill {
     position: absolute;
     left: 0;
-    top: 8px;
-    height: 6px;
-    border-radius: 3px;
+    top: 8px; /* geometry */
+    height: 6px; /* geometry */
+    border-radius: var(--r-sm);
     pointer-events: none;
   }
   .slider::before {
@@ -269,13 +268,13 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: 8px;
-    height: 6px;
-    border-radius: 3px;
+    top: 8px; /* geometry */
+    height: 6px; /* geometry */
+    border-radius: var(--r-sm);
     background: var(--panel-2);
   }
   .slider .zone {
-    background: rgba(242, 182, 64, 0.32);
+    background: var(--warn-zone);
   }
   .slider .fill {
     background: var(--accent);
@@ -293,30 +292,30 @@
     cursor: pointer;
   }
   .slider input::-webkit-slider-runnable-track {
-    height: 22px;
+    height: 22px; /* geometry */
     background: transparent;
   }
   .slider input::-webkit-slider-thumb {
     appearance: none;
-    width: 16px;
-    height: 16px;
-    margin-top: 3px;
+    width: 16px; /* geometry */
+    height: 16px; /* geometry */
+    margin-top: 3px; /* geometry */
     border-radius: 50%;
     background: var(--text);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow);
   }
   .slider.warn input::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px rgba(242, 182, 64, 0.45);
+    box-shadow: 0 0 0 3px var(--warn-ring); /* geometry */
   }
   .val {
     border: none;
     background: transparent;
-    font-weight: 700;
-    font-size: 13px;
+    font-weight: var(--w-bold);
+    font-size: var(--t-md);
     white-space: nowrap;
-    padding: 4px 6px;
-    border-radius: 6px;
-    min-width: 72px;
+    padding: var(--s1) var(--s2);
+    border-radius: var(--r-sm);
+    min-width: 72px; /* geometry */
     text-align: right;
   }
   .val:hover {
@@ -327,32 +326,32 @@
   }
   .val small {
     color: var(--muted);
-    font-size: 10.5px;
-    margin-left: 4px;
-    font-weight: 400;
+    font-size: var(--t-xs);
+    margin-left: var(--s1);
+    font-weight: var(--w-regular);
   }
   .typed {
-    width: 72px;
-    padding: 4px 6px;
-    border-radius: 6px;
+    width: 72px; /* geometry */
+    padding: var(--s1) var(--s2);
+    border-radius: var(--r-sm);
     border: 1px solid var(--accent);
     background: var(--panel-2);
     color: var(--text);
     font: inherit;
-    font-weight: 700;
+    font-weight: var(--w-bold);
     text-align: right;
   }
   .chips {
     display: flex;
-    gap: 6px;
+    gap: var(--s2);
   }
   .chip {
-    font-size: 11.5px;
-    padding: 5px 11px;
-    border-radius: 999px;
+    font-size: var(--t-sm);
+    padding: var(--s1) var(--s3);
+    border-radius: var(--r-pill);
     border: 1px solid var(--line);
     background: transparent;
-    color: var(--muted);
+    color: var(--muted-hi);
   }
   .chip.on {
     border-color: var(--accent);
@@ -362,64 +361,68 @@
   .line {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--s3);
     flex-wrap: wrap;
-    margin-top: 10px;
-    padding-top: 10px;
+    margin-top: var(--s3);
+    padding-top: var(--s3);
     border-top: 1px dashed var(--line);
   }
   .line.quiet {
     border-top: none;
-    margin-top: 4px;
+    margin-top: var(--s1);
     padding-top: 0;
-    font-size: 11.5px;
+    font-size: var(--t-sm);
   }
   .dot {
-    width: 18px;
-    height: 18px;
+    width: 18px; /* geometry */
+    height: 18px; /* geometry */
     border-radius: 50%;
     background: var(--warn);
-    color: #2b2622;
+    color: var(--on-warn);
     display: grid;
     place-items: center;
-    font-weight: 800;
-    font-size: 12px;
+    font-weight: var(--w-bold);
+    font-size: var(--t-sm);
     flex: none;
   }
   .dot.ok {
     background: var(--ok);
   }
   .fix {
-    font-size: 11.5px;
-    padding: 4px 11px;
-    border-radius: 999px;
+    font-size: var(--t-sm);
+    padding: var(--s1) var(--s3);
+    border-radius: var(--r-pill);
     border: 1px solid var(--warn);
     color: var(--warn);
-    font-weight: 600;
+    font-weight: var(--w-bold);
     background: transparent;
   }
   .fix.alt {
     border-color: var(--line);
     color: var(--muted);
-    font-weight: 500;
+    font-weight: var(--w-medium);
   }
   .fix:hover {
     background: var(--warn-soft);
+  }
+  .prog {
+    display: flex;
+    flex-direction: column;
   }
   .prog-top {
     display: flex;
     justify-content: space-between;
     color: var(--muted);
-    font-size: 12px;
-    margin-bottom: 7px;
+    font-size: var(--t-sm);
+    margin-bottom: var(--s2);
   }
   .prog-top b {
     color: var(--text);
-    font-weight: 600;
+    font-weight: var(--w-bold);
   }
   .bar {
-    height: 6px;
-    border-radius: 3px;
+    height: 6px; /* geometry */
+    border-radius: var(--r-sm);
     background: var(--panel-2);
     overflow: hidden;
   }
@@ -427,17 +430,17 @@
     display: block;
     height: 100%;
     background: var(--accent);
-    border-radius: 3px;
+    border-radius: var(--r-sm);
     transition: width 0.2s linear;
   }
   .prog-actions {
     text-align: right;
-    margin-top: 8px;
+    margin-top: var(--s2);
   }
   .check {
     color: var(--ok);
-    font-weight: 800;
-    font-size: 15px;
+    font-weight: var(--w-bold);
+    font-size: var(--t-lg);
   }
   .result {
     white-space: nowrap;
