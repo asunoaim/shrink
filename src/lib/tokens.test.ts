@@ -3,10 +3,16 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const files = [
-  "src/routes/+page.svelte",
-  ...readdirSync("src/lib/components").map((f) => join("src/lib/components", f)),
-].filter((f) => f.endsWith(".svelte"));
+/** every .svelte file under `dir`, subfolders included */
+function svelteFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
+    const p = join(dir, d.name);
+    if (d.isDirectory()) return svelteFiles(p);
+    return d.name.endsWith(".svelte") ? [p] : [];
+  });
+}
+
+const files = [...svelteFiles("src/routes"), ...svelteFiles("src/lib/components")];
 
 function styleLines(file: string): string[] {
   const src = readFileSync(file, "utf8");
@@ -15,6 +21,12 @@ function styleLines(file: string): string[] {
 }
 
 describe("design tokens", () => {
+  it("finds the page and the components", () => {
+    expect(files.some((f) => f.endsWith("+page.svelte"))).toBe(true);
+    expect(files.some((f) => f.endsWith("+layout.svelte"))).toBe(true);
+    expect(files.some((f) => f.endsWith("Player.svelte"))).toBe(true);
+  });
+
   for (const f of files) {
     it(`${f} has no literal colors`, () => {
       const bad = readFileSync(f, "utf8").split("\n").filter((l) => /#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(l));

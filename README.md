@@ -23,7 +23,7 @@ Windows may show "Windows protected your PC" because the installer isn't signed 
 
 1. Drop a clip on the window, or right-click a video → **Show more options → Open in shrink**.
 2. Drag across the timeline to mark a highlight, or press **I** (start) and **O** (end). Mark as many as you like; each one becomes its own file.
-3. Pick **Original** or **Shrink**, set the size, and press **Export**. The files land in the folder you choose and are copied to the clipboard, so Ctrl+V in Discord just works.
+3. Pick **Original quality** or **Shrink to size**, set the size, and press **Export**. The files land in the folder you choose and are copied to the clipboard (unless you turned that off in settings), so Ctrl+V in Discord just works.
 4. **⚙** in the top bar: where clips are saved, clipboard on/off, and what a clip starts with (audio, mode, size).
 
 | Key | Action |

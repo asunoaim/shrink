@@ -217,7 +217,7 @@
       <ul class="details">
         {#each outcomes as o, i}
           {#if o.kind === "failed"}
-            <li><b>Clip {i + 1}:</b> {o.error} <code>{o.detail}</code></li>
+            <li><b>Clip {i + 1}:</b> {o.error}{#if o.detail} <code>{o.detail}</code>{/if}</li>
           {/if}
         {/each}
       </ul>
