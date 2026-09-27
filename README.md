@@ -28,7 +28,7 @@ Windows may show "Windows protected your PC" because the installer isn't signed 
 | Key | Action |
 |---|---|
 | Space | Play / pause (plays on past the highlight's end) |
-| Click a highlight / Tab | Jump to its start (Shift+Tab: previous one) |
+| Click a highlight / E | Jump to its start (Q: previous one) |
 | Mouse wheel on the timeline | Skip 1 s (Shift: 5 s) |
 | ← / → | One frame back / forward |
 | Shift + ← / → | One second |
