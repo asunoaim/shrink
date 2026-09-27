@@ -20,11 +20,17 @@ use tauri::{AppHandle, Emitter, Manager, State};
 const THUMB_COUNT: u32 = 24;
 const THUMB_HEIGHT: u32 = 72;
 
+#[derive(Clone)]
+struct OpenClip {
+    info: ClipInfo,
+    keyframes_ready: bool,
+}
+
 #[derive(Default)]
 pub struct AppState {
     tools: Mutex<Option<Tools>>,
     encoder: Mutex<Option<Encoder>>,
-    clip: Mutex<Option<ClipInfo>>,
+    clip: Mutex<Option<OpenClip>>,
     cancel: Mutex<Option<CancelFlag>>,
     /// One export at a time, so two runs can't race for the same file names.
     exporting: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -47,8 +53,54 @@ impl AppState {
         self.clip
             .lock()
             .unwrap()
-            .clone()
+            .as_ref()
+            .map(|c| c.info.clone())
             .ok_or_else(|| EngineError::InvalidRequest("no clip is open".into()))
+    }
+
+    fn set_clip(&self, info: ClipInfo) {
+        *self.clip.lock().unwrap() = Some(OpenClip { info, keyframes_ready: false });
+    }
+
+    /// The open clip, if it is still `path` (results for an older clip are dropped).
+    fn clip_if(&self, path: &Path) -> Result<ClipInfo> {
+        self.clip()
+            .ok()
+            .filter(|c| c.path == path)
+            .ok_or_else(|| EngineError::InvalidRequest("that clip isn't open anymore".into()))
+    }
+
+    /// The open clip's keyframes if `path` is still open, read under one lock so a
+    /// concurrent store can't be observed half-applied: `Ok(Some(k))` once ready,
+    /// `Ok(None)` if a scan is still needed, `Err` if that clip isn't open anymore.
+    fn ready_keyframes(&self, path: &Path) -> Result<Option<Vec<f64>>> {
+        match self.clip.lock().unwrap().as_ref() {
+            Some(c) if c.info.path == path => Ok(c.keyframes_ready.then(|| c.info.keyframes.clone())),
+            _ => Err(EngineError::InvalidRequest("that clip isn't open anymore".into())),
+        }
+    }
+
+    fn store_keyframes(&self, path: &Path, keyframes: Vec<f64>) -> Result<()> {
+        let mut guard = self.clip.lock().unwrap();
+        match guard.as_mut() {
+            Some(c) if c.info.path == path => {
+                c.info.keyframes = keyframes;
+                c.keyframes_ready = true;
+                Ok(())
+            }
+            _ => Err(EngineError::InvalidRequest("that clip isn't open anymore".into())),
+        }
+    }
+
+    /// Scans once per clip; later calls return the stored list.
+    fn ensure_keyframes(&self, tools: &Tools, path: &Path) -> Result<Vec<f64>> {
+        if let Some(k) = self.ready_keyframes(path)? {
+            return Ok(k);
+        }
+        let info = self.clip_if(path)?;
+        let k = probe::keyframes(tools, &info)?;
+        self.store_keyframes(path, k.clone())?;
+        Ok(k)
     }
 }
 
@@ -68,21 +120,37 @@ struct ExportDone {
     copied_to_clipboard: bool,
 }
 
+/// Quick: stream info only. Keyframes and thumbnails follow via `clip_keyframes` / `clip_thumbs`.
 #[tauri::command]
 pub async fn open_clip(app: AppHandle, state: State<'_, AppState>, path: String) -> Result<ClipView> {
     let tools = state.tools()?;
-    let info = probe::probe(&tools, Path::new(&path))?;
+    let info = probe::probe_quick(&tools, Path::new(&path))?;
     allow(&app, &info.path)?;
     let encoder = state.encoder(&tools);
-
-    let thumbs = cache_file(&app, "thumbs", &info.path, "png").ok().filter(|png| {
-        png.is_file() || preview::thumbnail_strip(&tools, &info, png, THUMB_COUNT, THUMB_HEIGHT).is_ok()
-    });
+    let thumbs = cache_file(&app, "thumbs", &info.path, "png").ok().filter(|png| png.is_file());
     if let Some(t) = &thumbs {
         allow(&app, t)?;
     }
-    *state.clip.lock().unwrap() = Some(info.clone());
+    state.set_clip(info.clone());
     Ok(ClipView { info, thumbs, thumb_count: THUMB_COUNT, encoder })
+}
+
+#[tauri::command]
+pub async fn clip_keyframes(state: State<'_, AppState>, path: String) -> Result<Vec<f64>> {
+    let tools = state.tools()?;
+    state.ensure_keyframes(&tools, Path::new(&path))
+}
+
+#[tauri::command]
+pub async fn clip_thumbs(app: AppHandle, state: State<'_, AppState>, path: String) -> Result<PathBuf> {
+    let tools = state.tools()?;
+    let info = state.clip_if(Path::new(&path))?;
+    let png = cache_file(&app, "thumbs", &info.path, "png")?;
+    if !png.is_file() {
+        preview::thumbnail_strip(&tools, &info, &png, THUMB_COUNT, THUMB_HEIGHT)?;
+    }
+    allow(&app, &png)?;
+    Ok(png)
 }
 
 #[tauri::command]
@@ -95,14 +163,23 @@ pub fn size_advice(state: State<'_, AppState>, longest: f64, target_bytes: u64, 
 /// Plans the export and starts it in the background. Progress arrives as
 /// `export-event`, the end as `export-done`.
 #[tauri::command]
-pub fn start_export(app: AppHandle, state: State<'_, AppState>, request: ExportRequest) -> Result<Vec<ExportJob>> {
+pub async fn start_export(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: ExportRequest,
+    copy_to_clipboard: bool,
+) -> Result<Vec<ExportJob>> {
     use std::sync::atomic::Ordering;
     if state.exporting.swap(true, Ordering::SeqCst) {
         return Err(EngineError::InvalidRequest("an export is already running".into()));
     }
     let planned = (|| -> Result<(Vec<ExportJob>, Tools)> {
         let tools = state.tools()?;
-        let info = state.clip()?;
+        let mut info = state.clip()?;
+        if matches!(request.mode, plan::Mode::Original) {
+            // lossless cuts need to know where they may start
+            info.keyframes = state.ensure_keyframes(&tools, &info.path)?;
+        }
         Ok((plan::plan(&info, &request, state.encoder(&tools), &|p| p.exists())?, tools))
     })();
     let (jobs, tools) = match planned {
@@ -128,11 +205,20 @@ pub fn start_export(app: AppHandle, state: State<'_, AppState>, request: ExportR
                 _ => None,
             })
             .collect();
-        let copied_to_clipboard = !done.is_empty() && clipboard::copy_files(&done).is_ok();
+        let copied_to_clipboard = copy_to_clipboard && !done.is_empty() && clipboard::copy_files(&done).is_ok();
         exporting.store(false, std::sync::atomic::Ordering::SeqCst);
         let _ = app.emit("export-done", ExportDone { outcomes, copied_to_clipboard });
     });
     Ok(jobs)
+}
+
+/// Find ffmpeg and test the graphics-card encoders while the window opens,
+/// so the first clip doesn't wait for it.
+pub fn warm_up(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    if let Ok(tools) = state.tools() {
+        state.encoder(&tools);
+    }
 }
 
 #[tauri::command]
@@ -209,4 +295,51 @@ fn cache_file(app: &AppHandle, kind: &str, source: &Path, ext: &str) -> Result<P
     meta.len().hash(&mut h);
     meta.modified().ok().hash(&mut h);
     Ok(dir.join(format!("{:016x}.{ext}", h.finish())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn info(path: &str) -> ClipInfo {
+        ClipInfo {
+            path: PathBuf::from(path),
+            format_name: String::new(),
+            container_ext: "mp4".into(),
+            duration: 10.0,
+            size_bytes: 1,
+            bitrate: 1,
+            width: 1920,
+            height: 1080,
+            fps: 60.0,
+            video_codec: "h264".into(),
+            audio_tracks: vec![],
+            keyframes: vec![],
+            start_time: 0.0,
+        }
+    }
+
+    #[test]
+    fn keyframes_for_a_clip_that_is_no_longer_open_are_refused() {
+        let state = AppState::default();
+        state.set_clip(info("C:/a.mp4"));
+        state.set_clip(info("C:/b.mp4"));
+        assert!(state.store_keyframes(Path::new("C:/a.mp4"), vec![0.0, 1.0]).is_err());
+        assert!(state.clip().unwrap().keyframes.is_empty());
+        state.store_keyframes(Path::new("C:/b.mp4"), vec![0.0, 2.0]).unwrap();
+        assert_eq!(state.clip().unwrap().keyframes, vec![0.0, 2.0]);
+        assert_eq!(state.ready_keyframes(Path::new("C:/b.mp4")).unwrap(), Some(vec![0.0, 2.0]));
+    }
+
+    #[test]
+    fn ready_keyframes_reflects_the_currently_open_clip() {
+        let state = AppState::default();
+        state.set_clip(info("C:/a.mp4"));
+        state.store_keyframes(Path::new("C:/a.mp4"), vec![0.0, 1.0]).unwrap();
+        assert_eq!(state.ready_keyframes(Path::new("C:/a.mp4")).unwrap(), Some(vec![0.0, 1.0]));
+        assert!(state.ready_keyframes(Path::new("C:/other.mp4")).is_err());
+
+        state.set_clip(info("C:/b.mp4"));
+        assert_eq!(state.ready_keyframes(Path::new("C:/b.mp4")).unwrap(), None);
+    }
 }

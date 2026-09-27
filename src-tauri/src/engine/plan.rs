@@ -246,6 +246,7 @@ mod tests {
                 .map(|i| AudioTrack { index: i, channels: 2, title: None })
                 .collect(),
             keyframes: (0..70).map(|k| k as f64).collect(),
+            start_time: 0.0,
         }
     }
 

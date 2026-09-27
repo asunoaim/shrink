@@ -11,8 +11,15 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(commands::AppState::default())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            std::thread::spawn(move || commands::warm_up(&handle));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::open_clip,
+            commands::clip_keyframes,
+            commands::clip_thumbs,
             commands::size_advice,
             commands::start_export,
             commands::cancel_export,

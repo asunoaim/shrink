@@ -1,6 +1,6 @@
 mod common;
 
-use shrink_lib::engine::probe::probe;
+use shrink_lib::engine::probe::{keyframes, probe, probe_quick};
 use shrink_lib::engine::EngineError;
 
 #[test]
@@ -65,4 +65,21 @@ fn missing_file_is_a_probe_error() {
         Err(EngineError::Probe(_)) => {}
         other => panic!("expected Probe error, got {other:?}"),
     }
+}
+
+#[test]
+fn quick_probe_skips_the_keyframe_scan() {
+    let t = common::tools();
+    let quick = probe_quick(&t, &common::fixture_two_tracks()).unwrap();
+    assert!(quick.keyframes.is_empty());
+    assert_eq!((quick.width, quick.height), (640, 360));
+    assert_eq!(quick.audio_tracks.len(), 2);
+}
+
+#[test]
+fn keyframes_later_match_the_full_probe() {
+    let t = common::tools();
+    let full = probe(&t, &common::fixture_two_tracks()).unwrap();
+    let quick = probe_quick(&t, &common::fixture_two_tracks()).unwrap();
+    assert_eq!(keyframes(&t, &quick).unwrap(), full.keyframes);
 }
