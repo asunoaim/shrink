@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { AudioTrack, ClipOutcome, Encoder, Format, SizeAdvice } from "$lib/api";
-  import { bytesToMb, fmtMb } from "$lib/format";
+  import { bytesToMb, fmtFormat, fmtMb } from "$lib/format";
   import { posToValue, valueToPos } from "$lib/slider";
 
   export type Phase = "idle" | "exporting" | "done";
@@ -55,11 +55,12 @@
 
   let editing = $state(false);
   let typed = $state("");
+  let showDetails = $state(false);
 
-  const fmtFormat = (f: Format) => `${f.height}p · ${Math.round(f.fps)}`;
-  const trackName = (t: AudioTrack) => t.title ?? `Track ${t.index + 1}`;
+  const trackName = (t: AudioTrack) => t.title ?? `Audio ${t.index + 1}`;
   const done = $derived(outcomes.filter((o) => o.kind === "done") as Extract<ClipOutcome, { kind: "done" }>[]);
   const failed = $derived(outcomes.filter((o) => o.kind === "failed") as Extract<ClipOutcome, { kind: "failed" }>[]);
+  const chosenClean = $derived(!!chosenFormat && !!advice?.suggestions.find((s) => s.format.height === chosenFormat!.height && Math.round(s.format.fps) === Math.round(chosenFormat!.fps))?.clean);
 
   function showMb(mb: number) {
     return mb < 10 ? mb.toFixed(1) : Math.round(mb).toString();
@@ -99,14 +100,18 @@
       node.select();
     });
   }
+
+  $effect(() => {
+    if (phase !== "done") showDetails = false;
+  });
 </script>
 
 <div class="dock">
   {#if phase === "idle"}
     <div class="row">
       <div class="seg" role="radiogroup" aria-label="Export mode">
-        <button class:on={mode === "original"} onclick={() => (mode = "original")}>Original</button>
-        <button class:on={mode === "shrink"} onclick={() => (mode = "shrink")}>Shrink</button>
+        <button role="radio" aria-checked={mode === "original"} class:on={mode === "original"} onclick={() => (mode = "original")}>Original quality</button>
+        <button role="radio" aria-checked={mode === "shrink"} class:on={mode === "shrink"} onclick={() => (mode = "shrink")}>Shrink to size</button>
       </div>
 
       {#if mode === "shrink"}
@@ -126,13 +131,13 @@
           {/if}
         </div>
       {:else}
-        <div class="size note">Lossless and instant. Each clip starts at the keyframe before your mark.</div>
+        <div class="size note">Same quality as the recording. Clips can start up to a second early, the closest point where a cut stays lossless.</div>
       {/if}
 
       {#if tracks.length >= 2}
         <div class="chips" aria-label="Audio tracks">
           {#each tracks as t}
-            <button class="chip" class:on={selectedTracks.includes(t.index)} onclick={() => toggleTrack(t.index)}>{trackName(t)}</button>
+            <button class="chip" class:on={selectedTracks.includes(t.index)} aria-pressed={selectedTracks.includes(t.index)} onclick={() => toggleTrack(t.index)}>{trackName(t)}</button>
           {/each}
         </div>
       {/if}
@@ -145,18 +150,19 @@
     {#if mode === "shrink" && chosenFormat}
       <div class="line">
         <span class="dot ok">✓</span>
-        <span>Exporting at <b>{fmtFormat(chosenFormat)} fps</b> <span class="muted">to fit {showMb(targetMb)} MB cleanly.</span></span>
+        <span>Exporting at <b>{fmtFormat(chosenFormat)}</b>
+          <span class="muted">{chosenClean ? `to fit ${showMb(targetMb)} MB cleanly.` : `to fit ${showMb(targetMb)} MB. Fast movement may still look blocky.`}</span></span>
         <span class="grow"></span>
         <button class="fix alt" onclick={() => (chosenFormat = null)}>Keep {fmtFormat(source)}</button>
       </div>
     {:else if inZone && advice}
       <div class="line">
         <span class="dot">!</span>
-        <span><b>Tight for {fmtFormat(source)} fps</b> <span class="muted">— fast movement will look blocky.</span></span>
+        <span><b>Tight for {fmtFormat(source)}</b> <span class="muted">— fast movement will look blocky.</span></span>
         <span class="grow"></span>
         {#each advice.suggestions as s}
           <button class="fix" class:alt={!s.suggested} onclick={() => (chosenFormat = s.format)}>
-            {s.suggested ? "Use " : ""}{fmtFormat(s.format)}{s.clean ? " (clean)" : ""}
+            {s.suggested ? "Use " : ""}{fmtFormat(s.format)}{s.clean ? " · looks clean" : ""}
           </button>
         {/each}
       </div>
@@ -184,15 +190,16 @@
       <span class="grow result">
         {#if done.length > 0}
           <b>{done.length === 1 ? "1 clip saved" : `${done.length} clips saved`}</b>
-          <span class="muted">· {done.map((d) => fmtMb(d.sizeBytes).replace(" MB", "")).join(" · ")} MB{copiedToClipboard ? " · copied to clipboard" : ""}</span>
+          <span class="muted">· {done.map((d) => fmtMb(d.sizeBytes)).join(" · ")}{copiedToClipboard ? " · copied to clipboard" : ""}</span>
         {:else}
           <b>Nothing was saved</b>
         {/if}
         {#if failed.length > 0}
-          <span class="err">· {failed.length} failed: {failed[0].error}</span>
+          <span class="err">· {failed.length} failed · {failed[0].error}</span>
         {/if}
       </span>
       {#if failed.length > 0}
+        <button class="btn ghost small" aria-expanded={showDetails} onclick={() => (showDetails = !showDetails)}>Details</button>
         <button class="btn ghost" onclick={onretry}>Try again</button>
       {/if}
       {#if done.length > 0}
@@ -200,6 +207,15 @@
       {/if}
       <button class="btn" onclick={ondone}>Done</button>
     </div>
+    {#if showDetails && failed.length > 0}
+      <ul class="details">
+        {#each outcomes as o, i}
+          {#if o.kind === "failed"}
+            <li><b>Clip {i + 1}:</b> {o.error} <code>{o.detail}</code></li>
+          {/if}
+        {/each}
+      </ul>
+    {/if}
   {/if}
 </div>
 
@@ -449,5 +465,21 @@
   }
   .err {
     color: var(--warn);
+  }
+  .details {
+    margin: var(--s2) 0 0;
+    padding: var(--s2) var(--s3);
+    border-top: 1px solid var(--line);
+    font-size: var(--t-sm);
+    list-style: none;
+    user-select: text;
+    max-height: 160px; /* geometry */
+    overflow: auto;
+  }
+  .details code {
+    display: block;
+    color: var(--muted);
+    white-space: pre-wrap;
+    margin: var(--s1) 0 var(--s2);
   }
 </style>
