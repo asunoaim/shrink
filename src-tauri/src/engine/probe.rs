@@ -33,9 +33,25 @@ pub struct ClipInfo {
     pub audio_tracks: Vec<AudioTrack>,
     /// Keyframe times in seconds from the start of the clip, ascending.
     pub keyframes: Vec<f64>,
+    /// Container start time; keyframe times are relative to it.
+    #[serde(skip)]
+    pub start_time: f64,
 }
 
+/// Everything, including the keyframe scan (a few seconds on hour-long recordings).
 pub fn probe(tools: &Tools, path: &Path) -> Result<ClipInfo> {
+    let mut info = probe_quick(tools, path)?;
+    info.keyframes = keyframes(tools, &info)?;
+    Ok(info)
+}
+
+/// Keyframe times from packet flags, relative to the clip start.
+pub fn keyframes(tools: &Tools, info: &ClipInfo) -> Result<Vec<f64>> {
+    scan_keyframes(tools, &info.path, info.start_time)
+}
+
+/// Stream info only, no keyframe scan (fast even for hour-long recordings).
+pub fn probe_quick(tools: &Tools, path: &Path) -> Result<ClipInfo> {
     let json = run_ffprobe(
         tools,
         &["-v", "error", "-print_format", "json", "-show_format", "-show_streams"],
@@ -90,12 +106,13 @@ pub fn probe(tools: &Tools, path: &Path) -> Result<ClipInfo> {
         fps,
         video_codec: video["codec_name"].as_str().unwrap_or_default().to_string(),
         audio_tracks,
-        keyframes: keyframes(tools, path, start_time)?,
+        keyframes: Vec::new(),
+        start_time,
     })
 }
 
 /// Keyframe times from packet flags (fast even for hour-long recordings).
-fn keyframes(tools: &Tools, path: &Path, start_time: f64) -> Result<Vec<f64>> {
+fn scan_keyframes(tools: &Tools, path: &Path, start_time: f64) -> Result<Vec<f64>> {
     let csv = run_ffprobe(
         tools,
         &["-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time,flags", "-of", "csv=p=0"],
