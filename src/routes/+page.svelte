@@ -214,6 +214,12 @@
         outDir: dir,
       }, settings.copyToClipboard);
     } catch (e) {
+      // Cancel pressed while it was still preparing: nothing ran, nothing failed
+      if (String(e) === "Cancelled.") {
+        phase = "idle";
+        progress = null;
+        return;
+      }
       phase = "done";
       const err: ClipOutcome = { kind: "failed", error: String(e), detail: "" };
       outcomes = retrying ? mergeRetry(outcomes, runNumbers, runNumbers.map(() => err)) : ordered.map(() => err);
