@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bytesToMb, fmtMb, fmtTime, mbToBytes } from "./format";
+import { bytesToMb, fmtMb, fmtTime, mbToBytes, fmtClock, fmtFormat } from "./format";
 
 describe("fmtTime", () => {
   it("shows minutes, seconds and tenths", () => {
@@ -20,5 +20,23 @@ describe("sizes", () => {
   it("formats with one decimal under 100 MB", () => {
     expect(fmtMb(mbToBytes(24.14))).toBe("24.1 MB");
     expect(fmtMb(mbToBytes(243))).toBe("243 MB");
+  });
+});
+
+describe("fmtFormat", () => {
+  it("always writes fps", () => {
+    expect(fmtFormat({ height: 1080, fps: 119.88 })).toBe("1080p · 120 fps");
+    expect(fmtFormat({ height: 720, fps: 60 })).toBe("720p · 60 fps");
+  });
+});
+
+describe("fmtClock", () => {
+  it("drops tenths on whole seconds", () => {
+    expect(fmtClock(40)).toBe("0:40");
+    expect(fmtClock(40.02)).toBe("0:40");
+    expect(fmtClock(125)).toBe("2:05");
+  });
+  it("keeps tenths otherwise", () => {
+    expect(fmtClock(39.5)).toBe("0:39.5");
   });
 });

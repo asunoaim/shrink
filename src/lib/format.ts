@@ -17,3 +17,15 @@ export function fmtTime(sec: number): string {
   const s = (tenths % 600) / 10;
   return `${m}:${s.toFixed(1).padStart(4, "0")}`;
 }
+
+/** "1080p · 120 fps", the one way a format is written anywhere. */
+export const fmtFormat = (f: { height: number; fps: number }) => `${f.height}p · ${Math.round(f.fps)} fps`;
+
+/** m:ss, with tenths only when the time isn't a whole second. */
+export function fmtClock(sec: number): string {
+  const tenths = Math.round(Math.max(0, sec) * 10);
+  const whole = tenths % 10 === 0;
+  const m = Math.floor(tenths / 600);
+  const s = (tenths % 600) / 10;
+  return `${m}:${whole ? String(Math.round(s)).padStart(2, "0") : s.toFixed(1).padStart(4, "0")}`;
+}
