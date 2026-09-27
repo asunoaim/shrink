@@ -281,8 +281,9 @@ pub fn set_settings(app: AppHandle, settings: Settings) -> std::result::Result<(
     settings::save(&settings_path(&app)?, &settings).map_err(|e| e.to_string())
 }
 
+/// Async so an unreachable network path can't freeze the window while Windows gives up on it.
 #[tauri::command]
-pub fn folder_exists(path: String) -> bool {
+pub async fn folder_exists(path: String) -> bool {
     Path::new(&path).is_dir()
 }
 
