@@ -29,6 +29,10 @@
     if (video.paused) video.play();
     else video.pause();
   }
+
+  export function pause() {
+    video?.pause();
+  }
 </script>
 
 <div class="stage">
