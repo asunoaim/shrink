@@ -41,9 +41,21 @@ export type ExportRequest = {
   outDir: string;
 };
 
+export type SaveTo = "ask" | "nextToOriginal" | "folder";
+export type AudioDefault = "first" | "all" | "last";
+export type Settings = {
+  saveTo: SaveTo;
+  folder: string | null;
+  copyToClipboard: boolean;
+  audio: AudioDefault;
+  lastAudio: number[];
+  startMode: "original" | "shrink";
+  targetMb: number;
+};
+
 export type ClipOutcome =
   | { kind: "done"; output: string; sizeBytes: number }
-  | { kind: "failed"; error: string }
+  | { kind: "failed"; error: string; detail: string }
   | { kind: "cancelled" };
 
 export type RunEvent =
@@ -53,10 +65,17 @@ export type RunEvent =
 
 export type ExportDone = { outcomes: ClipOutcome[]; copiedToClipboard: boolean };
 
+export const getSettings = () => invoke<Settings>("get_settings");
+export const setSettings = (settings: Settings) => invoke<void>("set_settings", { settings });
+export const folderExists = (path: string) => invoke<boolean>("folder_exists", { path });
+export const clipKeyframes = (path: string) => invoke<number[]>("clip_keyframes", { path });
+export const clipThumbs = (path: string) => invoke<string>("clip_thumbs", { path });
+
 export const openClip = (path: string) => invoke<ClipView>("open_clip", { path });
 export const sizeAdvice = (longest: number, targetBytes: number, hasAudio: boolean) =>
   invoke<SizeAdvice>("size_advice", { longest, targetBytes, hasAudio });
-export const startExport = (request: ExportRequest) => invoke<unknown[]>("start_export", { request });
+export const startExport = (request: ExportRequest, copyToClipboard: boolean) =>
+  invoke<unknown[]>("start_export", { request, copyToClipboard });
 export const cancelExport = () => invoke<void>("cancel_export");
 export const makeProxy = () => invoke<string>("make_proxy");
 export const initialFile = () => invoke<string | null>("initial_file");

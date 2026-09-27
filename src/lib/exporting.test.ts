@@ -3,7 +3,7 @@ import type { ClipOutcome } from "./api";
 import { clampTarget, doneOutputs, mergeRetry } from "./exporting";
 
 const done = (output: string): ClipOutcome => ({ kind: "done", output, sizeBytes: 1 });
-const failed: ClipOutcome = { kind: "failed", error: "disk full" };
+const failed: ClipOutcome = { kind: "failed", error: "disk full", detail: "" };
 
 describe("clampTarget", () => {
   it("pulls a remembered target down to what the section can use", () => {
