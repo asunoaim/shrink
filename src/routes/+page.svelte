@@ -56,13 +56,12 @@
 
   let gearButton: HTMLButtonElement | undefined = $state();
 
-  async function closeSettings(byKeyboard: boolean) {
+  async function closeSettings() {
     // a size typed but not yet committed saves on blur ("change"), before the page goes
     (document.activeElement as HTMLElement | null)?.blur();
     screen = "editor";
     await tick();
-    // Esc leaves a visible focus ring on the gear, so Space should press it
-    if (byKeyboard) focusByPointer = false;
+    // how focus arrived stays as before settings opened: a clicked gear keeps Space on play
     gearButton?.focus();
   }
 
@@ -266,7 +265,7 @@
 
   function onKey(e: KeyboardEvent) {
     if (screen === "settings") {
-      if (e.key === "Escape") closeSettings(true);
+      if (e.key === "Escape") closeSettings();
       return;
     }
     const target = e.target as HTMLElement;
@@ -400,7 +399,7 @@
     </div>
     <UpdateNotice busy={phase === "exporting"} />
     {#if screen === "settings"}
-      <button class="btn ghost small" onclick={() => closeSettings(false)}>← Back</button>
+      <button class="btn ghost small" onclick={closeSettings}>← Back</button>
     {:else}
       <button class="icon" bind:this={gearButton} aria-label="Settings" title="Settings" onclick={openSettings} disabled={phase === "exporting"}>⚙</button>
     {/if}
