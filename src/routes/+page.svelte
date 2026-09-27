@@ -5,6 +5,8 @@
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import {
     cancelExport,
+    clipKeyframes,
+    clipThumbs,
     copyToClipboard,
     fileName,
     fileUrl,
@@ -42,6 +44,8 @@
   let error = $state("");
   let dragOver = $state(false);
   let proxyProgress: number | null = $state(null);
+  let keyframesReady = $state(false);
+  let loadingName = $state("");
 
   // playback + sections
   let player: Player | undefined = $state();
@@ -117,6 +121,7 @@
   async function openPath(path: string) {
     if (phase === "exporting") return;
     loading = true;
+    loadingName = fileName(path);
     error = "";
     try {
       const v = await openClip(path);
@@ -130,6 +135,23 @@
       currentTime = 0;
       phase = "idle";
       selectedTracks = v.info.audioTracks.length > 0 ? [0] : [];
+      keyframesReady = false;
+      const opened = v.info.path;
+      // both arrive later; drop them if another clip was opened meanwhile
+      clipKeyframes(opened)
+        .then((k) => {
+          if (view?.info.path !== opened) return;
+          view = { ...view, info: { ...view.info, keyframes: k } };
+          keyframesReady = true;
+        })
+        .catch(() => {});
+      if (!v.thumbs) {
+        clipThumbs(opened)
+          .then((t) => {
+            if (view?.info.path === opened) view = { ...view, thumbs: t };
+          })
+          .catch(() => {});
+      }
     } catch (e) {
       error = String(e);
     } finally {
@@ -174,7 +196,7 @@
       outcomes = [];
     }
     runNumbers = ordered.map((s) => s.number);
-    progress = { clip: 1, count: ordered.length, fraction: 0, eta: null };
+    progress = { clip: 1, count: ordered.length, fraction: 0, eta: null, preparing: true };
     startedAt = performance.now();
     phase = "exporting";
     try {
@@ -259,7 +281,7 @@
       onExportEvent((e) => {
         if (!progress) return;
         if (e.kind === "clipStarted") {
-          progress = { ...progress, clip: runNumbers.indexOf(e.clipNumber) + 1, count: e.clipCount, fraction: 0 };
+          progress = { ...progress, clip: runNumbers.indexOf(e.clipNumber) + 1, count: e.clipCount, fraction: 0, preparing: false };
         }
         if (e.kind === "progress") {
           const overall = (progress.clip - 1 + e.fraction) / progress.count;
@@ -320,7 +342,7 @@
         onseek={(t) => player?.seek(t)}
         thumbs={view.thumbs ? fileUrl(view.thumbs) : null}
         keyframes={info.keyframes}
-        showActualStart={mode === "original"}
+        showActualStart={mode === "original" && keyframesReady}
         {pendingIn}
         bind:sections
         bind:selected
@@ -352,7 +374,7 @@
   {:else}
     <div class="drop" class:over={dragOver}>
       {#if loading}
-        <div class="big">Opening…</div>
+        <div class="big">Opening {loadingName}…</div>
       {:else}
         <div class="big">Drop a clip here</div>
         <div class="muted">or right-click any video → Open in shrink</div>
@@ -365,7 +387,7 @@
   {/if}
 
   {#if view && (dragOver || loading)}
-    <div class="overlay">{loading ? "Opening…" : "Drop to open"}</div>
+    <div class="overlay">{loading ? `Opening ${loadingName}…` : "Drop to open"}</div>
   {/if}
   {#if proxyProgress !== null}
     <div class="overlay">Preparing preview… {Math.round(proxyProgress * 100)}%</div>
