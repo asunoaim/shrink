@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { revealItemInDir } from "@tauri-apps/plugin-opener";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -52,6 +52,18 @@
     if (phase === "exporting") return;
     player?.pause();
     screen = "settings";
+  }
+
+  let gearButton: HTMLButtonElement | undefined = $state();
+
+  async function closeSettings(byKeyboard: boolean) {
+    // a size typed but not yet committed saves on blur ("change"), before the page goes
+    (document.activeElement as HTMLElement | null)?.blur();
+    screen = "editor";
+    await tick();
+    // Esc leaves a visible focus ring on the gear, so Space should press it
+    if (byKeyboard) focusByPointer = false;
+    gearButton?.focus();
   }
 
   // clip
@@ -136,6 +148,7 @@
       currentTime = 0;
       phase = "idle";
       keyframesReady = false;
+      screen = "editor"; // dropped or opened while the settings page was up
       const opened = v.info.path;
       // both arrive later; drop them if another clip was opened meanwhile
       clipKeyframes(opened)
@@ -181,19 +194,22 @@
     if (!info || ordered.length === 0 || picking || phase === "exporting") return;
     let dir = outDir;
     if (!dir) {
-      const hasFolder = settings.saveTo === "folder" && !!settings.folder && (await folderExists(settings.folder));
-      const target = resolveOutDir(settings, info.path, hasFolder);
-      if (target.kind === "dir") {
-        dir = target.dir;
-      } else {
-        picking = true;
-        try {
+      // set before the first await, so a second Export click meanwhile is ignored
+      picking = true;
+      try {
+        // an unreachable folder counts as missing: ask instead
+        const hasFolder =
+          settings.saveTo === "folder" && !!settings.folder && (await folderExists(settings.folder).catch(() => false));
+        const target = resolveOutDir(settings, info.path, hasFolder);
+        if (target.kind === "dir") {
+          dir = target.dir;
+        } else {
           const picked = await open({ directory: true, title: target.title });
           if (typeof picked !== "string") return;
           dir = picked;
-        } finally {
-          picking = false;
         }
+      } finally {
+        picking = false;
       }
     }
     retrying = outDir !== undefined;
@@ -250,7 +266,7 @@
 
   function onKey(e: KeyboardEvent) {
     if (screen === "settings") {
-      if (e.key === "Escape") screen = "editor";
+      if (e.key === "Escape") closeSettings(true);
       return;
     }
     const target = e.target as HTMLElement;
@@ -344,21 +360,28 @@
         }
         const migrated = migrateTargetMb(s, stored);
         if (migrated) {
-          updateSettings(migrated);
-          try {
-            localStorage.removeItem("shrink.targetMb");
-          } catch {
-            /* ignore */
-          }
+          settings = migrated;
+          // the old value goes only once the new file has it; a failed save retries next launch
+          setSettings(migrated)
+            .then(() => {
+              try {
+                localStorage.removeItem("shrink.targetMb");
+              } catch {
+                /* ignore */
+              }
+            })
+            .catch((e) => (error = `Couldn't save settings: ${e}`));
         } else {
           settings = s;
         }
         targetMb = settings.targetMb;
       })
-      .catch(() => {});
-    initialFile().then((f) => {
-      if (f) openPath(f);
-    });
+      .catch(() => {})
+      // "Open in shrink": open the clip once the settings are in, so it starts with them
+      .then(() => initialFile())
+      .then((f) => {
+        if (f) openPath(f);
+      });
     return () => unlisten.forEach((u) => u.then((f) => f()));
   });
 </script>
@@ -377,9 +400,9 @@
     </div>
     <UpdateNotice busy={phase === "exporting"} />
     {#if screen === "settings"}
-      <button class="btn ghost small" onclick={() => (screen = "editor")}>← Back</button>
+      <button class="btn ghost small" onclick={() => closeSettings(false)}>← Back</button>
     {:else}
-      <button class="icon" aria-label="Settings" title="Settings" onclick={openSettings} disabled={phase === "exporting"}>⚙</button>
+      <button class="icon" bind:this={gearButton} aria-label="Settings" title="Settings" onclick={openSettings} disabled={phase === "exporting"}>⚙</button>
     {/if}
     {#if screen === "editor" && info}
       <button class="btn ghost small" onclick={pickFile} disabled={phase === "exporting"}>Open…</button>
