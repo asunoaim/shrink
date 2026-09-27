@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fmtTime } from "$lib/format";
+  import { fmtClock, fmtTime } from "$lib/format";
   import {
     addSection,
     moveSection,
@@ -161,8 +161,8 @@
     {#each list as s (s.id)}
       {@const real = showActualStart ? actualStart(keyframes, s.start) : s.start}
       {#if showActualStart && s.start - real > 0.05}
-        <div class="lead" style:left={pct(real)} style:width={pct(s.start - real)} title="Lossless clips start at the keyframe before your mark">
-          <span class="lead-label">starts {fmtTime(real)}</span>
+        <div class="lead" style:left={pct(real)} style:width={pct(s.start - real)} title="Lossless cuts start at the closest point before your mark">
+          <span class="lead-label">starts {fmtClock(real)}</span>
         </div>
       {/if}
       <div
@@ -193,7 +193,9 @@
   {/if}
 
   <div class="playhead" style:left={pct(currentTime)}>
-    <span class="grab" role="slider" tabindex="-1" aria-label="Playhead" aria-valuenow={currentTime} onpointerdown={onScrubDown}></span>
+    <span class="grab" role="slider" tabindex="0" aria-label="Playhead"
+      aria-valuemin={0} aria-valuemax={duration} aria-valuenow={currentTime} aria-valuetext={fmtTime(currentTime)}
+      onpointerdown={onScrubDown}></span>
   </div>
 </div>
 

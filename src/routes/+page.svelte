@@ -375,7 +375,7 @@
     <div class="overlay">Preparing preview… {Math.round(proxyProgress * 100)}%</div>
   {/if}
   {#if view && error}
-    <div class="toast" role="alert">{error} <button onclick={() => (error = "")}>✕</button></div>
+    <div class="toast" role="alert">{error} <button aria-label="Dismiss" onclick={() => (error = "")}>✕</button></div>
   {/if}
 </div>
 
