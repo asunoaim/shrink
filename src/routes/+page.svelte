@@ -23,6 +23,7 @@
   } from "$lib/api";
   import { bytesToMb, fmtMb, mbToBytes } from "$lib/format";
   import { clampTarget, doneOutputs, mergeRetry } from "$lib/exporting";
+  import { keyAction } from "$lib/keys";
   import { longest, markIn, markOut, neighbour, numbered, removeSection, type Section } from "$lib/sections";
   import Player from "$lib/components/Player.svelte";
   import Timeline from "$lib/components/Timeline.svelte";
@@ -30,6 +31,9 @@
   import UpdateNotice from "$lib/components/UpdateNotice.svelte";
 
   const VIDEO_EXT = ["mp4", "mkv", "mov", "m4v", "webm", "avi", "ts", "flv"];
+
+  // screen: a later task wires the settings page
+  let screen: "editor" | "settings" = $state("editor");
 
   // clip
   let view = $state<ClipView | null>(null);
@@ -206,52 +210,44 @@
 
   function onKey(e: KeyboardEvent) {
     const target = e.target as HTMLElement;
-    if (!info || target.tagName === "INPUT") return;
+    if (!info || screen !== "editor") return;
+    const action = keyAction(e.key, {
+      typing: target.tagName === "INPUT" || target.tagName === "TEXTAREA",
+      buttonFocusedByKeyboard: target.tagName === "BUTTON" && target.matches(":focus-visible"),
+      exporting: phase === "exporting",
+      shift: e.shiftKey,
+    });
+    if (!action) return;
+    e.preventDefault();
     const frame = 1 / (info.fps || 60);
-    // while exporting, the preview stays usable but the sections are locked
-    if (phase === "exporting" && !["Tab", " ", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
-    switch (e.key) {
-      case "Tab": {
-        e.preventDefault();
-        const next = neighbour(sections, selected, e.shiftKey ? -1 : 1);
+    switch (action.kind) {
+      case "jump": {
+        const next = neighbour(sections, selected, action.dir);
         if (next) {
           selected = next.id;
           player?.seek(next.start);
         }
         break;
       }
-      case " ":
-        e.preventDefault();
+      case "toggle":
         player?.toggle();
         break;
-      case "ArrowLeft":
-        e.preventDefault();
-        step(e.shiftKey ? -1 : -frame);
+      case "step":
+        step(action.dir * (action.unit === "second" ? 1 : frame));
         break;
-      case "ArrowRight":
-        e.preventDefault();
-        step(e.shiftKey ? 1 : frame);
+      case "markIn":
+        ({ sections, pendingIn, selected } = markIn({ sections, pendingIn, selected }, currentTime, info.duration));
         break;
-      case "i":
-      case "I": {
-        const st = markIn({ sections, pendingIn, selected }, currentTime, info.duration);
-        ({ sections, pendingIn, selected } = st);
+      case "markOut":
+        ({ sections, pendingIn, selected } = markOut({ sections, pendingIn, selected }, currentTime, info.duration));
         break;
-      }
-      case "o":
-      case "O": {
-        const st = markOut({ sections, pendingIn, selected }, currentTime, info.duration);
-        ({ sections, pendingIn, selected } = st);
-        break;
-      }
-      case "Delete":
-      case "Backspace":
+      case "remove":
         if (selected !== null) {
           sections = removeSection(sections, selected);
           selected = null;
         }
         break;
-      case "Escape":
+      case "clear":
         selected = null;
         pendingIn = null;
         break;
@@ -330,7 +326,7 @@
         bind:selected
       />
       <div class="hint muted">
-        Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · click it or press <kbd>Tab</kbd> to jump there · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
+        Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · click it or press <kbd>Q</kbd> <kbd>E</kbd> to jump there · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
       </div>
     </main>
     <ExportBar
