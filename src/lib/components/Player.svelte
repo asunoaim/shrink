@@ -56,10 +56,10 @@
   .stage {
     position: relative;
     flex: 1;
-    min-height: 0;
-    border-radius: 10px;
+    min-height: 0; /* geometry */
+    border-radius: var(--r-md);
     overflow: hidden;
-    background: #141110;
+    background: var(--stage);
   }
   video {
     position: absolute;
@@ -71,32 +71,30 @@
   }
   .hud {
     position: absolute;
-    left: 12px;
-    bottom: 12px;
-    font-size: 12px;
+    left: 12px; /* geometry */
+    bottom: 12px; /* geometry */
+    font-size: var(--t-sm);
     font-variant-numeric: tabular-nums;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 4px 9px;
-    border-radius: 7px;
-    backdrop-filter: blur(6px);
+    color: var(--hud-text);
+    background: var(--hud-bg);
+    padding: var(--s1) var(--s2);
+    border-radius: var(--r-sm);
     pointer-events: none;
   }
   .play {
     position: absolute;
-    right: 12px;
-    bottom: 12px;
-    width: 32px;
-    height: 32px;
+    right: 12px; /* geometry */
+    bottom: 12px; /* geometry */
+    width: 32px; /* geometry */
+    height: 32px; /* geometry */
     border-radius: 50%;
     border: none;
-    background: rgba(0, 0, 0, 0.5);
-    color: #fff;
+    background: var(--hud-bg);
+    color: var(--hud-text);
     display: grid;
     place-items: center;
-    backdrop-filter: blur(6px);
   }
   .play:hover {
-    background: rgba(0, 0, 0, 0.7);
+    background: var(--hud-bg-hover);
   }
 </style>

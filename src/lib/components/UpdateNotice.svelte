@@ -54,20 +54,20 @@
   .notice {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    padding: 4px 4px 4px 12px;
-    border-radius: 999px;
+    gap: var(--s2);
+    font-size: var(--t-sm);
+    padding: var(--s1) var(--s1) var(--s1) var(--s3);
+    border-radius: var(--r-pill);
     background: var(--accent-soft);
     border: 1px solid var(--accent);
     white-space: nowrap;
   }
   button {
     border: none;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-weight: 700;
-    font-size: 11.5px;
+    border-radius: var(--r-pill);
+    padding: var(--s1) var(--s3);
+    font-weight: var(--w-bold);
+    font-size: var(--t-sm);
     background: var(--accent);
     color: var(--on-accent);
   }
