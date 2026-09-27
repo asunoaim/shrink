@@ -4,8 +4,8 @@
 
 A small Windows app for gameplay clips. Mark your highlights, then either
 
-- **save them losslessly**, instantly and in the original quality (for montages), or
-- **shrink them to a size you pick**, e.g. 10 MB for Discord, with the best quality that fits.
+- **save them losslessly**, without re-encoding, in the original quality (for montages), or
+- **shrink them to a size you pick**, e.g. 10 MB for Discord, with the best quality shrink can fit.
 
 It uses your graphics card to encode (NVIDIA, AMD or Intel) and falls back to the CPU.
 
@@ -15,7 +15,7 @@ It uses your graphics card to encode (NVIDIA, AMD or Intel) and falls back to th
 
 ## Download
 
-Get the installer from the [latest release](https://github.com/asunoaim/shrink/releases/latest). shrink updates itself when a new version is out.
+Get the installer from the [latest release](https://github.com/asunoaim/shrink/releases/latest). shrink tells you when a new version is out and updates with one click.
 
 Windows may show "Windows protected your PC" because the installer isn't signed with a paid certificate. Click **More info → Run anyway**.
 
@@ -24,6 +24,7 @@ Windows may show "Windows protected your PC" because the installer isn't signed 
 1. Drop a clip on the window, or right-click a video → **Show more options → Open in shrink**.
 2. Drag across the timeline to mark a highlight, or press **I** (start) and **O** (end). Mark as many as you like; each one becomes its own file.
 3. Pick **Original** or **Shrink**, set the size, and press **Export**. The files land in the folder you choose and are copied to the clipboard, so Ctrl+V in Discord just works.
+4. **⚙** in the top bar: where clips are saved, clipboard on/off, and what a clip starts with (audio, mode, size).
 
 | Key | Action |
 |---|---|
