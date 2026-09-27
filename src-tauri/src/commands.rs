@@ -10,6 +10,7 @@ use crate::engine::quality::{self, Format, SizeAdvice};
 use crate::engine::runner::{self, CancelFlag, ClipOutcome};
 use crate::engine::tools::Tools;
 use crate::engine::{EngineError, Result};
+use crate::settings::{self, Settings};
 use serde::Serialize;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -167,6 +168,25 @@ pub fn initial_file() -> Option<String> {
 #[tauri::command]
 pub fn copy_to_clipboard(paths: Vec<PathBuf>) -> std::result::Result<(), String> {
     clipboard::copy_files(&paths)
+}
+
+fn settings_path(app: &AppHandle) -> std::result::Result<PathBuf, String> {
+    Ok(app.path().app_config_dir().map_err(|e| e.to_string())?.join("settings.json"))
+}
+
+#[tauri::command]
+pub fn get_settings(app: AppHandle) -> Settings {
+    settings_path(&app).map(|p| settings::load(&p)).unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn set_settings(app: AppHandle, settings: Settings) -> std::result::Result<(), String> {
+    settings::save(&settings_path(&app)?, &settings).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn folder_exists(path: String) -> bool {
+    Path::new(&path).is_dir()
 }
 
 fn allow(app: &AppHandle, path: &Path) -> Result<()> {
