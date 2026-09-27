@@ -10,32 +10,49 @@
     copyToClipboard,
     fileName,
     fileUrl,
+    folderExists,
+    getSettings,
     initialFile,
     makeProxy,
     onExportDone,
     onExportEvent,
     onProxyProgress,
     openClip,
+    setSettings,
     sizeAdvice,
     startExport,
     type ClipOutcome,
     type ClipView,
     type Format,
+    type Settings,
     type SizeAdvice,
   } from "$lib/api";
   import { bytesToMb, fmtMb, mbToBytes } from "$lib/format";
   import { clampTarget, doneOutputs, mergeRetry } from "$lib/exporting";
   import { keyAction } from "$lib/keys";
+  import { DEFAULT_SETTINGS, initialTracks, migrateTargetMb, resolveOutDir } from "$lib/settings";
   import { longest, markIn, markOut, neighbour, numbered, removeSection, type Section } from "$lib/sections";
   import Player from "$lib/components/Player.svelte";
   import Timeline from "$lib/components/Timeline.svelte";
   import ExportBar, { type Phase, type Progress } from "$lib/components/ExportBar.svelte";
+  import SettingsPage from "$lib/components/SettingsPage.svelte";
   import UpdateNotice from "$lib/components/UpdateNotice.svelte";
 
   const VIDEO_EXT = ["mp4", "mkv", "mov", "m4v", "webm", "avi", "ts", "flv"];
 
-  // screen: a later task wires the settings page
+  let settings: Settings = $state({ ...DEFAULT_SETTINGS });
   let screen: "editor" | "settings" = $state("editor");
+
+  function updateSettings(s: Settings) {
+    settings = s;
+    setSettings(s).catch((e) => (error = `Couldn't save settings: ${e}`));
+  }
+
+  function openSettings() {
+    if (phase === "exporting") return;
+    player?.pause();
+    screen = "settings";
+  }
 
   // clip
   let view = $state<ClipView | null>(null);
@@ -57,7 +74,7 @@
 
   // export settings: every clip starts in Original; the size is remembered
   let mode: "original" | "shrink" = $state("original");
-  let targetMb = $state(load("targetMb", 25));
+  let targetMb = $state(DEFAULT_SETTINGS.targetMb);
   let chosenFormat: Format | null = $state(null);
   let selectedTracks: number[] = $state([]);
   let advice: SizeAdvice | null = $state(null);
@@ -76,24 +93,6 @@
 
   const info = $derived(view?.info ?? null);
   const source: Format = $derived(info ? { width: info.width, height: info.height, fps: info.fps } : { width: 0, height: 0, fps: 0 });
-
-  function load<T>(key: string, fallback: T): T {
-    try {
-      const v = localStorage.getItem(`shrink.${key}`);
-      return v === null ? fallback : (JSON.parse(v) as T);
-    } catch {
-      return fallback;
-    }
-  }
-  function save(key: string, v: unknown) {
-    try {
-      localStorage.setItem(`shrink.${key}`, JSON.stringify(v));
-    } catch {
-      /* storage unavailable: settings just aren't remembered */
-    }
-  }
-
-  $effect(() => save("targetMb", targetMb));
 
   // size advice follows the longest section, the target and the audio choice
   $effect(() => {
@@ -131,10 +130,11 @@
       selected = null;
       pendingIn = null;
       chosenFormat = null;
-      mode = "original";
+      mode = settings.startMode;
+      targetMb = settings.targetMb;
+      selectedTracks = initialTracks(settings.audio, settings.lastAudio, v.info.audioTracks.length);
       currentTime = 0;
       phase = "idle";
-      selectedTracks = v.info.audioTracks.length > 0 ? [0] : [];
       keyframesReady = false;
       const opened = v.info.path;
       // both arrive later; drop them if another clip was opened meanwhile
@@ -181,19 +181,26 @@
     if (!info || ordered.length === 0 || picking || phase === "exporting") return;
     let dir = outDir;
     if (!dir) {
-      picking = true;
-      try {
-        const picked = await open({ directory: true, title: "Save clips to…" });
-        if (typeof picked !== "string") return;
-        dir = picked;
-      } finally {
-        picking = false;
+      const hasFolder = settings.saveTo === "folder" && !!settings.folder && (await folderExists(settings.folder));
+      const target = resolveOutDir(settings, info.path, hasFolder);
+      if (target.kind === "dir") {
+        dir = target.dir;
+      } else {
+        picking = true;
+        try {
+          const picked = await open({ directory: true, title: target.title });
+          if (typeof picked !== "string") return;
+          dir = picked;
+        } finally {
+          picking = false;
+        }
       }
     }
     retrying = outDir !== undefined;
     if (!retrying) {
       lastRun = { sections: ordered, outDir: dir };
       outcomes = [];
+      updateSettings({ ...settings, lastAudio: selectedTracks });
     }
     runNumbers = ordered.map((s) => s.number);
     progress = { clip: 1, count: ordered.length, fraction: 0, eta: null, preparing: true };
@@ -205,7 +212,7 @@
         mode: mode === "original" ? { kind: "original" } : { kind: "shrink", targetBytes: mbToBytes(targetMb), format: chosenFormat },
         audioTracks: selectedTracks,
         outDir: dir,
-      }, true);
+      }, settings.copyToClipboard);
     } catch (e) {
       phase = "done";
       const err: ClipOutcome = { kind: "failed", error: String(e), detail: "" };
@@ -231,6 +238,10 @@
   }
 
   function onKey(e: KeyboardEvent) {
+    if (screen === "settings") {
+      if (e.key === "Escape") screen = "editor";
+      return;
+    }
     const target = e.target as HTMLElement;
     if (!info || screen !== "editor") return;
     const action = keyAction(e.key, {
@@ -294,7 +305,7 @@
         if (retrying) {
           outcomes = mergeRetry(outcomes, runNumbers, d.outcomes);
           const all = doneOutputs(outcomes);
-          copiedToClipboard = all.length > 0 && (await copyToClipboard(all).then(() => true, () => false));
+          copiedToClipboard = settings.copyToClipboard && all.length > 0 && (await copyToClipboard(all).then(() => true, () => false));
         } else {
           outcomes = d.outcomes;
           copiedToClipboard = d.copiedToClipboard;
@@ -312,6 +323,28 @@
         }
       }),
     ];
+    getSettings()
+      .then((s) => {
+        let stored: string | null = null;
+        try {
+          stored = localStorage.getItem("shrink.targetMb");
+        } catch {
+          /* no storage: nothing to take over */
+        }
+        const migrated = migrateTargetMb(s, stored);
+        if (migrated) {
+          updateSettings(migrated);
+          try {
+            localStorage.removeItem("shrink.targetMb");
+          } catch {
+            /* ignore */
+          }
+        } else {
+          settings = s;
+        }
+        targetMb = settings.targetMb;
+      })
+      .catch(() => {});
     initialFile().then((f) => {
       if (f) openPath(f);
     });
@@ -325,66 +358,74 @@
   <header>
     <div class="logo"><span class="mark"></span>shrink</div>
     <div class="file">
-      {#if info}<b>{fileName(info.path)}</b>{info.height}p · {Math.round(info.fps)} fps · {fmtMb(info.sizeBytes)}{/if}
+      {#if screen === "settings"}<b>Settings</b>{:else if info}<b>{fileName(info.path)}</b>{info.height}p · {Math.round(info.fps)} fps · {fmtMb(info.sizeBytes)}{/if}
     </div>
     <UpdateNotice busy={phase === "exporting"} />
-    {#if info}
+    {#if screen === "settings"}
+      <button class="btn ghost small" onclick={() => (screen = "editor")}>← Back</button>
+    {:else}
+      <button class="icon" aria-label="Settings" title="Settings" onclick={openSettings} disabled={phase === "exporting"}>⚙</button>
+    {/if}
+    {#if screen === "editor" && info}
       <button class="btn ghost small" onclick={pickFile} disabled={phase === "exporting"}>Open…</button>
     {/if}
   </header>
 
-  {#if view && info}
-    <main>
-      <Player bind:this={player} {src} duration={info.duration} bind:currentTime bind:paused onerror={onPlayerError} />
-      <Timeline
-        duration={info.duration}
-        {currentTime}
-        onseek={(t) => player?.seek(t)}
-        thumbs={view.thumbs ? fileUrl(view.thumbs) : null}
-        keyframes={info.keyframes}
-        showActualStart={mode === "original" && keyframesReady}
-        {pendingIn}
-        bind:sections
-        bind:selected
+  <div class="screen" hidden={screen === "settings"}>
+    {#if view && info}
+      <main>
+        <Player bind:this={player} {src} duration={info.duration} bind:currentTime bind:paused onerror={onPlayerError} />
+        <Timeline
+          duration={info.duration}
+          {currentTime}
+          onseek={(t) => player?.seek(t)}
+          thumbs={view.thumbs ? fileUrl(view.thumbs) : null}
+          keyframes={info.keyframes}
+          showActualStart={mode === "original" && keyframesReady}
+          {pendingIn}
+          bind:sections
+          bind:selected
+        />
+        <div class="hint muted">
+          Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · click it or press <kbd>Q</kbd> <kbd>E</kbd> to jump there · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
+        </div>
+      </main>
+      <ExportBar
+        bind:mode
+        bind:targetMb
+        bind:chosenFormat
+        bind:selectedTracks
+        {advice}
+        {source}
+        tracks={info.audioTracks}
+        count={sections.length}
+        encoder={view.encoder}
+        {phase}
+        {progress}
+        {outcomes}
+        {copiedToClipboard}
+        onexport={() => runExport(numbered(sections))}
+        oncancel={() => cancelExport()}
+        onreveal={reveal}
+        ondone={() => (phase = "idle")}
+        onretry={retryFailed}
       />
-      <div class="hint muted">
-        Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · click it or press <kbd>Q</kbd> <kbd>E</kbd> to jump there · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
+    {:else}
+      <div class="drop" class:over={dragOver}>
+        {#if loading}
+          <div class="big">Opening {loadingName}…</div>
+        {:else}
+          <div class="big">Drop a clip here</div>
+          <div class="muted">or right-click any video → Open in shrink</div>
+          <button class="btn ghost" onclick={pickFile}>Open file…</button>
+        {/if}
+        {#if error}
+          <div class="error">{error}</div>
+        {/if}
       </div>
-    </main>
-    <ExportBar
-      bind:mode
-      bind:targetMb
-      bind:chosenFormat
-      bind:selectedTracks
-      {advice}
-      {source}
-      tracks={info.audioTracks}
-      count={sections.length}
-      encoder={view.encoder}
-      {phase}
-      {progress}
-      {outcomes}
-      {copiedToClipboard}
-      onexport={() => runExport(numbered(sections))}
-      oncancel={() => cancelExport()}
-      onreveal={reveal}
-      ondone={() => (phase = "idle")}
-      onretry={retryFailed}
-    />
-  {:else}
-    <div class="drop" class:over={dragOver}>
-      {#if loading}
-        <div class="big">Opening {loadingName}…</div>
-      {:else}
-        <div class="big">Drop a clip here</div>
-        <div class="muted">or right-click any video → Open in shrink</div>
-        <button class="btn ghost" onclick={pickFile}>Open file…</button>
-      {/if}
-      {#if error}
-        <div class="error">{error}</div>
-      {/if}
-    </div>
-  {/if}
+    {/if}
+  </div>
+  {#if screen === "settings"}<SettingsPage {settings} onchange={updateSettings} />{/if}
 
   {#if view && (dragOver || loading)}
     <div class="overlay">{loading ? `Opening ${loadingName}…` : "Drop to open"}</div>
@@ -438,6 +479,32 @@
     color: var(--text);
     font-weight: var(--w-medium);
     margin-right: var(--s3);
+  }
+  .screen {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .screen[hidden] {
+    display: none;
+  }
+  .icon {
+    width: 28px; /* geometry */
+    height: 28px; /* geometry */
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted-hi);
+    display: grid;
+    place-items: center;
+  }
+  .icon:hover {
+    background: var(--panel-2);
+  }
+  .icon:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
   main {
     flex: 1;
