@@ -38,7 +38,7 @@ impl CancelFlag {
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ClipOutcome {
     Done { output: PathBuf, size_bytes: u64 },
-    Failed { error: String },
+    Failed { error: String, detail: String },
     Cancelled,
 }
 
@@ -199,7 +199,7 @@ pub fn run_all(tools: &Tools, jobs: &[ExportJob], cancel: &CancelFlag, on_event:
                         ClipOutcome::Done { output, size_bytes }
                     }
                     Err(EngineError::Cancelled) => ClipOutcome::Cancelled,
-                    Err(e) => ClipOutcome::Failed { error: e.to_string() },
+                    Err(e) => ClipOutcome::Failed { error: e.user_message(), detail: e.to_string() },
                 }
             };
             on_event(RunEvent::ClipFinished { clip_number: n, outcome: outcome.clone() });
