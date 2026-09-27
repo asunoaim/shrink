@@ -75,8 +75,8 @@
   }
   .hud {
     position: absolute;
-    left: 12px; /* geometry */
-    bottom: 12px; /* geometry */
+    left: var(--s3);
+    bottom: var(--s3);
     font-size: var(--t-sm);
     font-variant-numeric: tabular-nums;
     color: var(--hud-text);
@@ -87,8 +87,8 @@
   }
   .play {
     position: absolute;
-    right: 12px; /* geometry */
-    bottom: 12px; /* geometry */
+    right: var(--s3);
+    bottom: var(--s3);
     width: 32px; /* geometry */
     height: 32px; /* geometry */
     border-radius: 50%;
