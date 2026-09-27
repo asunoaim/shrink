@@ -424,7 +424,7 @@
           bind:selected
         />
         <div class="hint muted">
-          Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · click it or press <kbd>Q</kbd> <kbd>E</kbd> to jump there · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
+          Drag on the timeline or press <kbd>I</kbd> <kbd>O</kbd> to mark a highlight · <kbd>Q</kbd> <kbd>E</kbd> jump between highlights · <kbd>Space</kbd> plays · <kbd>←</kbd><kbd>→</kbd> frame, <kbd>Shift</kbd> second · wheel skips · <kbd>Del</kbd> removes
         </div>
       </main>
       <ExportBar

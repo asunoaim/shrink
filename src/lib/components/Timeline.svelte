@@ -130,10 +130,8 @@
         onseek(timeAt(e));
       }
     } else if (drag.kind === "move" && !drag.moved) {
-      // a click on a section puts the playhead at its start, so Space plays it
-      const id = drag.id;
-      const s = sections.find((x) => x.id === id);
-      if (s) onseek(s.start);
+      // a click on a section selects it and puts the playhead where you clicked (Q/E jump to starts)
+      onseek(timeAt(e));
     }
     drag = null;
   }
