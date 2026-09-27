@@ -237,6 +237,11 @@
     player?.seek(currentTime + seconds);
   }
 
+  // How focus last moved. WebView2 marks a mouse-focused button :focus-visible
+  // on the first key press, so we track it ourselves: a click means Space
+  // should still play, a Tab means Space should press the focused button.
+  let focusByPointer = false;
+
   function onKey(e: KeyboardEvent) {
     if (screen === "settings") {
       if (e.key === "Escape") screen = "editor";
@@ -246,7 +251,7 @@
     if (!info || screen !== "editor") return;
     const action = keyAction(e.key, {
       typing: target.tagName === "INPUT" || target.tagName === "TEXTAREA",
-      buttonFocusedByKeyboard: target.tagName === "BUTTON" && target.matches(":focus-visible"),
+      buttonFocusedByKeyboard: target.tagName === "BUTTON" && !focusByPointer,
       exporting: phase === "exporting",
       shift: e.shiftKey,
     });
@@ -352,7 +357,11 @@
   });
 </script>
 
-<svelte:window onkeydown={onKey} />
+<svelte:window
+  onpointerdowncapture={() => (focusByPointer = true)}
+  onkeydowncapture={(e) => e.key === "Tab" && (focusByPointer = false)}
+  onkeydown={onKey}
+/>
 
 <div class="app">
   <header>
