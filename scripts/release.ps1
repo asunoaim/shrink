@@ -7,6 +7,9 @@
 #   - write the release notes to docs/releases/<version>.md
 #   - commit and push; the release is tagged at the pushed commit
 #   - the updater signing key (from Vaultwarden) at $KeyPath, its password at $PasswordPath
+#     (or both already in TAURI_SIGNING_PRIVATE_KEY / _PASSWORD, as on GitHub)
+#
+# Usually run from GitHub instead: Actions > Release > Run workflow.
 param(
     [string]$KeyPath = "$env:USERPROFILE\.tauri\shrink-updater.key",
     [string]$PasswordPath = "$env:USERPROFILE\.tauri\shrink-updater.password",
@@ -24,8 +27,10 @@ if (git status --porcelain) { throw 'Commit your changes first.' }
 if (-not (Test-Path src-tauri/ffmpeg/ffmpeg.exe)) { throw 'Run scripts/fetch-ffmpeg.ps1 first.' }
 
 # build + sign
-$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content $KeyPath -Raw
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = (Get-Content $PasswordPath -Raw).Trim()
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+    $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content $KeyPath -Raw
+    $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = (Get-Content $PasswordPath -Raw).Trim()
+}
 npx tauri build
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
