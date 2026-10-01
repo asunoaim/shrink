@@ -1,11 +1,13 @@
 # Downloads the ffmpeg build that ships inside the installer into src-tauri/ffmpeg/.
 # The binaries are not committed to git; run this once before `npm run tauri build`.
 # Source: gyan.dev "release essentials" (GPL build: x264, NVENC, AMF, QSV).
+# Pinned to one version so local and GitHub builds ship the same ffmpeg.
+param([string]$Version = '9.0.2')
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $dest = Join-Path $root 'src-tauri\ffmpeg'
-$url = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+$url = "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-$Version-essentials_build.zip"
 $zip = Join-Path $env:TEMP 'shrink-ffmpeg-essentials.zip'
 $tmp = Join-Path $env:TEMP 'shrink-ffmpeg-essentials'
 
