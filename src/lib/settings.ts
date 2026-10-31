@@ -9,8 +9,21 @@ export const DEFAULT_SETTINGS: Settings = {
   audio: "first",
   lastAudio: [0],
   startMode: "original",
-  targetMb: 25,
+  targetMb: 20,
 };
+
+/** Quick shrink targets shown above the size slider. */
+export const SIZE_PRESETS = [10, 20, 50] as const;
+
+export type SizePreset = (typeof SIZE_PRESETS)[number];
+
+/** The preset equal to the current target, or null when the free-form value matches none. */
+export function activeSizePreset(targetMb: number): SizePreset | null {
+  for (const mb of SIZE_PRESETS) {
+    if (mb === targetMb) return mb;
+  }
+  return null;
+}
 
 export type OutDir = { kind: "ask"; title: string } | { kind: "dir"; dir: string };
 

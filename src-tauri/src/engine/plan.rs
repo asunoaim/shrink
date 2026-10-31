@@ -351,6 +351,26 @@ mod tests {
     }
 
     #[test]
+    fn preset_sizes_plan_at_or_under_the_requested_target() {
+        let i = info(1, "mp4");
+        // 30 s of a 200 MB / 70 s source is ~85 MB, so 10/20/50 are not capped.
+        for mb in [10_u64, 20, 50] {
+            let j = jobs(&i, &req(&[(0.0, 30.0)], shrink(mb), &[0]));
+            let target = mb * MIB;
+            match &j[0].kind {
+                JobKind::Encode { video_bitrate, target_bytes, .. } => {
+                    assert_eq!(*target_bytes, Some(target));
+                    assert_eq!(*video_bitrate, crate::engine::quality::video_bitrate(target, 30.0, true));
+                    let audio = crate::engine::quality::AUDIO_BPS as f64;
+                    let bytes = ((*video_bitrate as f64 + audio) * 30.0 / 8.0).ceil() as u64;
+                    assert!(bytes <= target, "{mb} MB budgets {bytes}");
+                }
+                k => panic!("{k:?}"),
+            }
+        }
+    }
+
+    #[test]
     fn shrink_is_exact_mp4_with_target_bitrate() {
         let i = info(1, "mkv");
         let j = jobs(&i, &req(&[(12.4, 22.4)], shrink(25), &[0]));

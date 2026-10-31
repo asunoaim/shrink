@@ -179,6 +179,33 @@ mod tests {
     const QHD120: Format = Format { width: 2560, height: 1440, fps: 120.0 };
     const FHD120: Format = Format { width: 1920, height: 1080, fps: 120.0 };
 
+    /// Media bytes the bitrate formula budgets for, before the container.
+    fn budget_bytes(target: u64, duration: f64, has_audio: bool) -> u64 {
+        let video = video_bitrate(target, duration, has_audio);
+        let audio = if has_audio { AUDIO_BPS } else { 0 };
+        ((video as f64 + audio as f64) * duration / 8.0).ceil() as u64
+    }
+
+    #[test]
+    fn preset_targets_budget_under_the_file_size() {
+        // 10, 20 and 50 MB are the quick targets. Any clip the encoder still
+        // accepts (video rate at or above the floor) must budget under that size.
+        for mb in [10_u64, 20, 50] {
+            let target = mb * MIB;
+            for has_audio in [false, true] {
+                let mut duration = 1.0;
+                while video_bitrate(target, duration, has_audio) >= MIN_VIDEO_BPS {
+                    let bytes = budget_bytes(target, duration, has_audio);
+                    assert!(
+                        bytes <= target,
+                        "{mb} MB, {duration}s, audio={has_audio}: budget {bytes} exceeds {target}"
+                    );
+                    duration += 1.0;
+                }
+            }
+        }
+    }
+
     #[test]
     fn video_bitrate_subtracts_audio_and_margin() {
         // (25 MB * 8 / 30 s - 160 kbps) * 0.97
