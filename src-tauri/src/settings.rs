@@ -29,6 +29,9 @@ pub enum StartMode {
     Shrink,
 }
 
+/// Size used when settings are missing or the saved target is not a real number.
+const DEFAULT_TARGET_MB: f64 = 20.0;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -52,7 +55,7 @@ impl Default for Settings {
             audio: AudioDefault::First,
             last_audio: vec![0],
             start_mode: StartMode::Original,
-            target_mb: 25.0,
+            target_mb: DEFAULT_TARGET_MB,
         }
     }
 }
@@ -64,7 +67,7 @@ pub fn load(path: &Path) -> Settings {
     };
     match serde_json::from_slice::<Settings>(&bytes) {
         Ok(mut s) => {
-            s.target_mb = if s.target_mb.is_finite() { s.target_mb.clamp(1.0, 1000.0) } else { 25.0 };
+            s.target_mb = if s.target_mb.is_finite() { s.target_mb.clamp(1.0, 1000.0) } else { DEFAULT_TARGET_MB };
             s
         }
         Err(_) => {
@@ -98,7 +101,21 @@ mod tests {
         assert_eq!(s, super::Settings::default());
         assert!(s.copy_to_clipboard);
         assert_eq!(s.save_to, super::SaveTo::Ask);
+        assert_eq!(s.target_mb, 20.0);
+    }
+
+    #[test]
+    fn saved_target_of_25_is_kept() {
+        let d = dir();
+        let p = d.path().join("settings.json");
+        std::fs::write(
+            &p,
+            r#"{"saveTo":"ask","folder":null,"copyToClipboard":true,"audio":"first","lastAudio":[0],"startMode":"shrink","targetMb":25}"#,
+        )
+        .unwrap();
+        let s = super::load(&p);
         assert_eq!(s.target_mb, 25.0);
+        assert_eq!(s.start_mode, super::StartMode::Shrink);
     }
 
     #[test]
@@ -128,6 +145,7 @@ mod tests {
         assert_eq!(s.save_to, super::SaveTo::NextToOriginal);
         assert!(s.copy_to_clipboard);
         assert_eq!(s.audio, super::AudioDefault::First);
+        assert_eq!(s.target_mb, 20.0);
     }
 
     #[test]

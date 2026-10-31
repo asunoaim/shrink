@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AudioTrack, ClipOutcome, Encoder, Format, SizeAdvice } from "$lib/api";
   import { bytesToMb, fmtFormat, fmtMb } from "$lib/format";
+  import { SIZE_PRESETS, activeSizePreset } from "$lib/settings";
   import { posToValue, valueToPos } from "$lib/slider";
 
   export type Phase = "idle" | "exporting" | "done";
@@ -8,7 +9,7 @@
 
   let {
     mode = $bindable("original"),
-    targetMb = $bindable(25),
+    targetMb = $bindable(20),
     chosenFormat = $bindable(null),
     selectedTracks = $bindable([]),
     advice,
@@ -49,6 +50,7 @@
   const minMb = $derived(advice ? bytesToMb(advice.sliderMinBytes) : 1);
   const maxMb = $derived(advice ? Math.max(bytesToMb(advice.sliderMaxBytes), minMb) : 100);
   const warnMb = $derived(advice ? bytesToMb(advice.warnMaxBytes) : 0);
+  const activePreset = $derived(activeSizePreset(targetMb));
   const pos = $derived(valueToPos(targetMb, minMb, maxMb));
   const zone = $derived(valueToPos(warnMb, minMb, maxMb));
   const inZone = $derived(mode === "shrink" && !!advice?.tooSmall && !chosenFormat);
@@ -64,6 +66,12 @@
 
   function showMb(mb: number) {
     return mb < 10 ? mb.toFixed(1) : Math.round(mb).toString();
+  }
+
+  function pickPreset(mb: number) {
+    targetMb = mb;
+    chosenFormat = null;
+    editing = false;
   }
 
   function onSlide(e: Event) {
@@ -116,19 +124,28 @@
 
       {#if mode === "shrink"}
         <div class="size">
-          <div class="slider" class:warn={inZone}>
-            <div class="zone" style:width={`${zone * 100}%`}></div>
-            <div class="fill" style:width={`${pos * 100}%`}></div>
-            <input type="range" min="0" max="1000" step="1" value={Math.round(pos * 1000)} oninput={onSlide} aria-label="Target size per clip" />
+          <div class="size-box">
+            <div class="chips" role="group" aria-label="Size presets">
+              {#each SIZE_PRESETS as mb (mb)}
+                <button class="chip" class:on={activePreset === mb} aria-pressed={activePreset === mb} aria-label={`Set target to ${mb} MB`} onclick={() => pickPreset(mb)}>{mb} MB</button>
+              {/each}
+            </div>
+            <div class="slider-line">
+              <div class="slider" class:warn={inZone}>
+                <div class="zone" style:width={`${zone * 100}%`}></div>
+                <div class="fill" style:width={`${pos * 100}%`}></div>
+                <input type="range" min="0" max="1000" step="1" value={Math.round(pos * 1000)} oninput={onSlide} aria-label="Target size per clip" />
+              </div>
+              {#if editing}
+                <input class="typed" use:focusSelect bind:value={typed} onblur={commitEdit}
+                  onkeydown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") editing = false; e.stopPropagation(); }} />
+              {:else}
+                <button class="val" class:warn={inZone} onclick={startEdit} title="Click to type a size">
+                  {showMb(targetMb)} MB<small>{count > 1 ? "each" : ""}</small>
+                </button>
+              {/if}
+            </div>
           </div>
-          {#if editing}
-            <input class="typed" use:focusSelect bind:value={typed} onblur={commitEdit}
-              onkeydown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") editing = false; e.stopPropagation(); }} />
-          {:else}
-            <button class="val" class:warn={inZone} onclick={startEdit} title="Click to type a size">
-              {showMb(targetMb)} MB<small>{count > 1 ? "each" : ""}</small>
-            </button>
-          {/if}
         </div>
       {:else}
         <div class="size note">Same quality as the recording. Clips can start up to a second early, the closest point where a cut stays lossless.</div>
@@ -263,6 +280,18 @@
   .size {
     flex: 1;
     min-width: 200px; /* geometry */
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+  }
+  .size-box {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+  }
+  .slider-line {
     display: flex;
     align-items: center;
     gap: var(--s3);

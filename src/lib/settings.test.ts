@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, initialTracks, migrateTargetMb, parentDir, resolveOutDir } from "./settings";
+import { DEFAULT_SETTINGS, SIZE_PRESETS, activeSizePreset, initialTracks, migrateTargetMb, parentDir, resolveOutDir } from "./settings";
 
 const s = (patch = {}) => ({ ...DEFAULT_SETTINGS, ...patch });
 
@@ -42,9 +42,26 @@ describe("initialTracks", () => {
 
 describe("migrateTargetMb", () => {
   it("takes the size 0.2 remembered", () => expect(migrateTargetMb(s(), "8")?.targetMb).toBe(8));
+  it("keeps a saved 25 instead of the new default", () => expect(migrateTargetMb(s(), "25")?.targetMb).toBe(25));
   it("ignores missing or broken values", () => {
     expect(migrateTargetMb(s(), null)).toBeNull();
     expect(migrateTargetMb(s(), "banana")).toBeNull();
     expect(migrateTargetMb(s(), "-4")).toBeNull();
+  });
+});
+
+describe("size presets", () => {
+  it("starts fresh settings at 20 MB", () => {
+    expect(DEFAULT_SETTINGS.targetMb).toBe(20);
+  });
+  it("offers 10, 20 and 50 MB", () => {
+    expect(SIZE_PRESETS).toEqual([10, 20, 50]);
+  });
+  it("marks only the chip that matches the current target", () => {
+    expect(activeSizePreset(10)).toBe(10);
+    expect(activeSizePreset(20)).toBe(20);
+    expect(activeSizePreset(50)).toBe(50);
+    expect(activeSizePreset(25)).toBeNull();
+    expect(activeSizePreset(20.4)).toBeNull();
   });
 });
